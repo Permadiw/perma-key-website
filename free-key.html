@@ -76,6 +76,32 @@ const statusText=[0,1,2,3].map(i=>document.getElementById('status'+i));
 const taskCards=[0,1,2,3].map(i=>document.getElementById('task'+i));
 const getButton=document.getElementById('get');
 const out=document.getElementById('out');
+let keyCountdownTimer=null;
+function formatKeyCountdown(ms){
+ const total=Math.max(0,Math.ceil(ms/1000));
+ const days=Math.floor(total/86400),hours=Math.floor(total%86400/3600),minutes=Math.floor(total%3600/60),seconds=total%60;
+ return [days,hours,minutes,seconds].map(v=>String(v).padStart(2,'0')).join(':');
+}
+function renderKeyOutput(key, expiry){
+ out.hidden=false;out.replaceChildren();
+ const label=document.createElement('div');label.textContent='YOUR FREE KEY · VALID FOR UP TO 6 HOURS';
+ const value=document.createElement('p');value.className='key-value';value.textContent=key;
+ const copy=document.createElement('button');copy.className='copy';copy.textContent='COPY KEY';copy.onclick=async()=>{try{await navigator.clipboard.writeText(key);copy.textContent='COPIED'}catch{copy.textContent='Copy unavailable — select the key above'}};
+ const timerWrap=document.createElement('div');timerWrap.className='countdown-wrap';
+ const timerLabel=document.createElement('div');timerLabel.className='countdown-label';timerLabel.textContent='FREE KEY COUNTDOWN · DD:HH:MM:SS';
+ const timer=document.createElement('div');timer.className='countdown';timer.setAttribute('role','timer');timer.setAttribute('aria-live','off');
+ const timerNote=document.createElement('div');timerNote.className='countdown-note';timerNote.textContent='Local display countdown; the API remains authoritative for key validity.';
+ timerWrap.append(timerLabel,timer,timerNote);
+ const expiryNote=document.createElement('div');expiryNote.className='task-status';expiryNote.textContent='Your progress is saved in this browser. Tasks reset when the 6-hour key period expires.';
+ out.append(label,value,copy,timerWrap,expiryNote);
+ if(keyCountdownTimer)clearInterval(keyCountdownTimer);
+ const update=()=>{
+  const left=Math.max(0,Number(expiry)-Date.now());
+  timer.textContent=formatKeyCountdown(left);
+  if(left<=0){timerLabel.textContent='FREE KEY COUNTDOWN · EXPIRED';if(keyCountdownTimer)clearInterval(keyCountdownTimer);keyCountdownTimer=null;}
+ };
+ update();keyCountdownTimer=setInterval(update,1000);
+}
 const modal=document.getElementById('taskModal');
 const modalMessage=document.getElementById('modalMessage');
 const openTaskButton=document.getElementById('openTask');
@@ -138,6 +164,7 @@ openTaskButton.addEventListener('click',()=>{
 cancelModal.addEventListener('click',()=>{modal.classList.remove('open');selectedTask=-1;});
 modal.addEventListener('click',e=>{if(e.target===modal){modal.classList.remove('open');selectedTask=-1;}});
 restoreProgress();render();
+if(savedState.key && savedState.keyExpiresAt){renderKeyOutput(savedState.key, Number(savedState.keyExpiresAt));}
 for(let i=0;i<4;i++){
  if(running[i]){
   const tick=()=>{
@@ -164,7 +191,7 @@ getButton.addEventListener('click',async()=>{
   if(typeof serverExpiry==='number'&&serverExpiry>0&&serverExpiry<1e12)expiry=serverExpiry*1000;
   if(!Number.isFinite(expiry)||expiry<=now)expiry=now+KEY_LIFETIME_MS;
   savedState.key=key;savedState.claimedAt=now;savedState.keyExpiresAt=expiry;persist();
-  out.replaceChildren();const label=document.createElement('div');label.textContent='YOUR FREE KEY · VALID FOR UP TO 6 HOURS';const value=document.createElement('p');value.className='key-value';value.textContent=key;const copy=document.createElement('button');copy.className='copy';copy.textContent='COPY KEY';copy.onclick=async()=>{try{await navigator.clipboard.writeText(key);copy.textContent='COPIED'}catch{copy.textContent='Copy unavailable — select the key above'}};const expiryNote=document.createElement('div');expiryNote.className='task-status';expiryNote.textContent='Your progress is saved in this browser. Tasks reset when the 6-hour key period expires.';out.append(label,value,copy,expiryNote)
+  renderKeyOutput(key, expiry)
  }
   else{out.textContent='The API responded, but no key field was found. Server response:\n'+JSON.stringify(d,null,2)}
  }catch(e){out.textContent='Unable to retrieve your key: '+e.message+'\nPlease try again later.'}

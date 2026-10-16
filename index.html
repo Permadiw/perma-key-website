@@ -1,0 +1,313 @@
+
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="theme-color" content="#080d18">
+  <meta name="description" content="PERMA KEY — official key portal PERMA DIW STUDIO.">
+  <title>PERMA KEY | Home</title>
+  <style>
+    :root {
+      color-scheme: dark;
+      --bg: #080d18;
+      --panel: #101827;
+      --line: #26364e;
+      --blue: #2878f0;
+      --cyan: #52dfff;
+      --text: #f4f7ff;
+      --muted: #9baac0;
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      font-family: Arial, Helvetica, sans-serif;
+      color: var(--text);
+      background:
+        radial-gradient(ellipse at 50% 0%, #19396a 0%, transparent 48%),
+        linear-gradient(145deg, #070b13, #0b1423);
+    }
+
+    a { color: inherit; text-decoration: none; }
+
+    .nav {
+      width: min(1100px, calc(100% - 36px));
+      margin: auto;
+      padding: 22px 0;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .brand {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      font-weight: 900;
+      letter-spacing: 1px;
+    }
+
+    .logo {
+      width: 43px;
+      height: 43px;
+      display: grid;
+      place-items: center;
+      border-radius: 13px;
+      color: #07111f;
+      font-size: 22px;
+      background: linear-gradient(135deg, #3981ff, #52dfff);
+    }
+
+    .brand small {
+      display: block;
+      margin-top: 4px;
+      font-size: 10px;
+      color: var(--muted);
+      letter-spacing: 2px;
+    }
+
+    .status {
+      padding: 8px 12px;
+      border: 1px solid #245c49;
+      border-radius: 30px;
+      background: #10271f;
+      color: #a8f3cf;
+      font-size: 11px;
+      white-space: nowrap;
+    }
+
+    main {
+      width: min(1000px, calc(100% - 36px));
+      flex: 1;
+      margin: auto;
+      padding: 45px 0 65px;
+      display: flex;
+      align-items: center;
+    }
+
+    .hero { width: 100%; text-align: center; }
+
+    .eyebrow {
+      display: inline-block;
+      padding: 9px 13px;
+      border: 1px solid #29456c;
+      border-radius: 30px;
+      background: #0d1b31;
+      color: #a8ceff;
+      font-size: 11px;
+      font-weight: bold;
+      letter-spacing: 2px;
+    }
+
+    h1 {
+      margin: 25px 0 18px;
+      font-size: clamp(42px, 8vw, 78px);
+      line-height: 1.04;
+      letter-spacing: -2px;
+      font-weight: 900;
+    }
+
+    h1 span {
+      color: #69baff;
+      background: linear-gradient(100deg, #ffffff, #73baff, #52dfff);
+      -webkit-background-clip: text;
+      background-clip: text;
+      -webkit-text-fill-color: transparent;
+    }
+
+    .intro {
+      max-width: 620px;
+      margin: auto;
+      color: var(--muted);
+      font-size: 15px;
+      line-height: 1.8;
+    }
+
+    .actions {
+      margin: 32px 0 45px;
+      display: flex;
+      justify-content: center;
+      flex-wrap: wrap;
+      gap: 12px;
+    }
+
+    .btn {
+      min-width: 165px;
+      padding: 15px 20px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 10px;
+      border: 1px solid var(--line);
+      border-radius: 12px;
+      font-size: 14px;
+      font-weight: bold;
+      transition: transform .2s, filter .2s;
+    }
+
+    .btn:hover { transform: translateY(-2px); filter: brightness(1.12); }
+
+    .primary {
+      border-color: transparent;
+      background: linear-gradient(110deg, #2870ef, #319be9);
+      box-shadow: 0 10px 28px #2479ef35;
+    }
+
+    .secondary { background: #101827; }
+
+    .features {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 14px;
+      text-align: left;
+    }
+
+    .feature {
+      min-height: 145px;
+      padding: 21px;
+      border: 1px solid var(--line);
+      border-radius: 16px;
+      background: linear-gradient(145deg, #111c2d, #0c1320);
+    }
+
+    .feature-icon {
+      width: 37px;
+      height: 37px;
+      margin-bottom: 15px;
+      display: grid;
+      place-items: center;
+      border: 1px solid #29456c;
+      border-radius: 11px;
+      background: #12233b;
+      color: var(--cyan);
+      font-size: 18px;
+    }
+
+    .feature h2 { margin: 0 0 9px; font-size: 14px; }
+
+    .feature p {
+      margin: 0;
+      color: var(--muted);
+      font-size: 12px;
+      line-height: 1.8;
+    }
+
+    .notice {
+      max-width: 680px;
+      margin: 22px auto 0;
+      color: #8292a9;
+      font-size: 11px;
+      line-height: 1.8;
+    }
+
+    footer {
+      width: min(1100px, calc(100% - 36px));
+      margin: auto;
+      padding: 20px 0 24px;
+      display: flex;
+      justify-content: space-between;
+      flex-wrap: wrap;
+      gap: 12px;
+      border-top: 1px solid #1b293d;
+      color: #8190a5;
+      font-size: 11px;
+    }
+
+    footer strong { color: #c4d2e6; }
+
+    @media (max-width: 650px) {
+      .nav { padding: 17px 0; }
+      .logo { width: 38px; height: 38px; }
+      .brand { font-size: 13px; }
+      .status { padding: 7px 9px; font-size: 10px; }
+      main { padding: 35px 0 42px; }
+      h1 { letter-spacing: -1px; }
+      .intro { font-size: 14px; }
+      .features { grid-template-columns: 1fr; }
+      .feature { min-height: auto; }
+      .actions { margin: 27px 0 34px; }
+      .btn { flex: 1; min-width: 140px; }
+    }
+  </style>
+</head>
+<body>
+  <header class="nav">
+    <a class="brand" href="./index.html">
+      <span class="logo">P</span>
+      <span>
+        PERMA KEY
+        <small>PERMA DIW STUDIO</small>
+      </span>
+    </a>
+    <span class="status">● KEY PORTAL</span>
+  </header>
+
+  <main>
+    <section class="hero">
+      <div class="eyebrow">OFFICIAL KEY PORTAL</div>
+
+      <h1>
+        WELCOME TO<br>
+        <span>PERMA KEY</span>
+      </h1>
+
+      <p class="intro">
+        Portal utama PERMA KEY untuk mengakses halaman pengambilan key
+        dan pengelolaan key. Dirancang dengan tampilan modern, ringan,
+        serta responsif untuk HP dan komputer.
+      </p>
+
+      <div class="actions">
+        <a class="btn primary" href="./free-key.html">
+          Get Free Key <span>→</span>
+        </a>
+        <a class="btn secondary" href="./admin.html">
+          Admin Panel <span>↗</span>
+        </a>
+      </div>
+
+      <div class="features">
+        <article class="feature">
+          <div class="feature-icon">⌘</div>
+          <h2>Simple Access</h2>
+          <p>Akses halaman key melalui satu portal dengan navigasi yang jelas.</p>
+        </article>
+
+        <article class="feature">
+          <div class="feature-icon">◇</div>
+          <h2>Responsive Design</h2>
+          <p>Tampilan menyesuaikan layar Android, tablet, dan desktop.</p>
+        </article>
+
+        <article class="feature">
+          <div class="feature-icon">▣</div>
+          <h2>Key Management</h2>
+          <p>Panel pengelolaan key tersedia untuk admin yang terotorisasi.</p>
+        </article>
+      </div>
+
+      <p class="notice">
+        Catatan: fungsi pengambilan dan pengelolaan key bergantung pada
+        konfigurasi API PERMA KEY. Timer tugas di halaman Free Key tidak
+        membuktikan bahwa aktivitas YouTube benar-benar telah dilakukan.
+      </p>
+    </section>
+  </main>
+
+  <footer>
+    <span>© <span id="year">2026</span> <strong>PERMA DIW STUDIO</strong></span>
+    <span>PERMA KEY Portal · All rights reserved</span>
+  </footer>
+
+  <script>
+    document.getElementById("year").textContent =
+      new Date().getFullYear();
+  </script>
+</body>
+</html>

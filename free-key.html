@@ -10,21 +10,50 @@
 <div class="eyebrow">Free access · Task completion</div><h1>Get your FREE key</h1>
 <p class="intro">Complete each task in order. Open each task, complete the requested action, wait for its timer, then confirm completion.</p>
 <div class="progress-head"><span>YOUR PROGRESS</span><span id="progressText">0 of 4 completed</span></div><div class="track"><div class="fill" id="progressFill"></div></div>
-<div class="task" id="task0"><div class="num">01</div><div class="task-content"><h2>Subscribe to the channel</h2><p>Visit the official channel and subscribe.</p><a class="task-link" href="https://www.youtube.com/" target="_blank" rel="noopener">Open YouTube channel ↗</a><button class="start-task" id="start0" type="button">Start task</button><div class="task-status" id="status0">Complete the action on YouTube, then confirm below.</div><button class="confirm" id="confirm0" type="button">I completed the task</button></div><div class="check" id="check0" aria-label="Not completed">✓</div></div>
-<div class="task" id="task1"><div class="num">02</div><div class="task-content"><h2>Like the required video</h2><p>Open the designated video and leave a like.</p><a class="task-link" href="https://www.youtube.com/" target="_blank" rel="noopener">Open required video ↗</a><button class="start-task" id="start1" type="button">Start task</button><div class="task-status" id="status1">Complete the previous task to unlock this step.</div><button class="confirm" id="confirm1" type="button">I completed the task</button></div><div class="check" id="check1" aria-label="Not completed">✓</div></div>
-<div class="task" id="task2"><div class="num">03</div><div class="task-content"><h2>Watch the required video</h2><p>Watch the video and follow any instructions provided.</p><a class="task-link" href="https://www.youtube.com/" target="_blank" rel="noopener">Watch required video ↗</a><button class="start-task" id="start2" type="button">Start task</button><div class="task-status" id="status2">Complete the previous task to unlock this step.</div><button class="confirm" id="confirm2" type="button">I completed the task</button></div><div class="check" id="check2" aria-label="Not completed">✓</div></div>
-<div class="task" id="task3"><div class="num">04</div><div class="task-content"><h2>Leave the required comment</h2><p>Post a relevant comment on the designated video.</p><a class="task-link" href="https://www.youtube.com/" target="_blank" rel="noopener">Open comment video ↗</a><button class="start-task" id="start3" type="button">Start task</button><div class="task-status" id="status3">Complete the previous task to unlock this step.</div><button class="confirm" id="confirm3" type="button">I completed the task</button></div><div class="check" id="check3" aria-label="Not completed">✓</div></div>
+<div class="task" id="task0"><div class="num">01</div><div class="task-content"><h2>Subscribe to the channel</h2><p>Visit the official channel and subscribe.</p><a class="task-link" href="https://www.youtube.com/channel/UCiSTRqsRTp0Lem3_qxYQIwA" target="_blank" rel="noopener">Open YouTube channel ↗</a><button class="start-task" id="start0" type="button">Start task</button><div class="task-status" id="status0">Complete the action on YouTube, then confirm below.</div><button class="confirm" id="confirm0" type="button">I completed the task</button></div><div class="check" id="check0" aria-label="Not completed">✓</div></div>
+<div class="task" id="task1"><div class="num">02</div><div class="task-content"><h2>Like the required video</h2><p>Open the designated video and leave a like.</p><a class="task-link" href="https://youtu.be/JcgUyeInJpw" target="_blank" rel="noopener">Open required video ↗</a><button class="start-task" id="start1" type="button">Start task</button><div class="task-status" id="status1">Complete the previous task to unlock this step.</div><button class="confirm" id="confirm1" type="button">I completed the task</button></div><div class="check" id="check1" aria-label="Not completed">✓</div></div>
+<div class="task" id="task2"><div class="num">03</div><div class="task-content"><h2>Watch the required video</h2><p>Watch the video and follow any instructions provided.</p><a class="task-link" href="https://youtu.be/JcgUyeInJpw" target="_blank" rel="noopener">Watch required video ↗</a><button class="start-task" id="start2" type="button">Start task</button><div class="task-status" id="status2">Complete the previous task to unlock this step.</div><button class="confirm" id="confirm2" type="button">I completed the task</button></div><div class="check" id="check2" aria-label="Not completed">✓</div></div>
+<div class="task" id="task3"><div class="num">04</div><div class="task-content"><h2>Leave the required comment</h2><p>Post a relevant comment on the designated video.</p><a class="task-link" href="https://youtu.be/JcgUyeInJpw" target="_blank" rel="noopener">Open comment video ↗</a><button class="start-task" id="start3" type="button">Start task</button><div class="task-status" id="status3">Complete the previous task to unlock this step.</div><button class="confirm" id="confirm3" type="button">I completed the task</button></div><div class="check" id="check3" aria-label="Not completed">✓</div></div>
 <button class="mainbtn" id="get" disabled>COMPLETE ALL TASKS TO GET KEY</button><div class="out" id="out" hidden></div><div class="foot">The timer does not independently verify activity on YouTube. Only confirm a task after completing it.</div>
 </section></main>
 <div class="modal-backdrop" id="taskModal" role="dialog" aria-modal="true" aria-labelledby="modalTitle"><div class="modal"><h2 id="modalTitle">Please complete this task</h2><p id="modalMessage">Open the task and complete the required action. The timer must finish before you can confirm completion.</p><div class="modal-actions"><button class="modal-cancel" id="cancelModal" type="button">Cancel</button><button class="modal-primary" id="openTask" type="button">Complete the task</button></div></div></div>
 <script>
 const API='https://perma-key-api.herdiansyah0239.workers.dev';
 const durations=[15,15,30,15];
-const done=[false,false,false,false];
+const STORAGE_KEY='perma_free_key_progress_v2';
+const KEY_LIFETIME_MS=6*60*60*1000;
+const freshState=()=>({done:[false,false,false,false],startedAt:[null,null,null,null],completedAt:[null,null,null,null],claimedAt:null,key:null,keyExpiresAt:null});
+let savedState=freshState();
+try{
+ const raw=localStorage.getItem(STORAGE_KEY);
+ if(raw){const parsed=JSON.parse(raw);if(parsed&&Array.isArray(parsed.done)&&parsed.done.length===4)savedState={...freshState(),...parsed};}
+}catch{}
+if(savedState.claimedAt && Date.now() >= (Number(savedState.keyExpiresAt)||Number(savedState.claimedAt)+KEY_LIFETIME_MS)) savedState=freshState();
+const done=savedState.done.map(Boolean);
 const running=[false,false,false,false];
-const started=[false,false,false,false];
+const started=done.map(Boolean);
 const remaining=[...durations];
 const timers=[null,null,null,null];
+function persist(){savedState.done=[...done];try{localStorage.setItem(STORAGE_KEY,JSON.stringify(savedState));}catch{}}
+function resetExpiredSession(){
+ const expiry=Number(savedState.keyExpiresAt)||((Number(savedState.claimedAt)||0)+KEY_LIFETIME_MS);
+ if(savedState.claimedAt && Date.now()>=expiry){
+  savedState=freshState();done.fill(false);started.fill(false);running.fill(false);remaining.splice(0,4,...durations);
+  timers.forEach((t,i)=>{if(t){clearInterval(t);timers[i]=null;}});
+  out.hidden=true;persist();render();
+ }
+}
+function restoreProgress(){
+ const now=Date.now();
+ for(let i=0;i<4;i++){
+  if(done[i]){started[i]=true;continue;}
+  if(savedState.startedAt[i]){
+   const left=Math.ceil((Number(savedState.startedAt[i])+durations[i]*1000-now)/1000);
+   if(left<=0){started[i]=true;remaining[i]=0;}
+   else{started[i]=true;remaining[i]=left;running[i]=true;}
+  }
+ }
+}
 const taskLinks=[...document.querySelectorAll('.task-link')];
 const startButtons=[0,1,2,3].map(i=>document.getElementById('start'+i));
 const confirmButtons=[0,1,2,3].map(i=>document.getElementById('confirm'+i));
@@ -68,18 +97,19 @@ function openReminder(i){
 }
 function beginTimer(i){
  if(done[i]||running[i]||(i>0&&!done[i-1]))return;
- started[i]=true;running[i]=true;remaining[i]=durations[i];render();
+ if(!savedState.startedAt[i])savedState.startedAt[i]=Date.now();
+ started[i]=true;running[i]=true;persist();render();
  const tick=()=>{
+  remaining[i]=Math.max(0,Math.ceil((Number(savedState.startedAt[i])+durations[i]*1000-Date.now())/1000));
+  if(remaining[i]<=0){clearInterval(timers[i]);timers[i]=null;running[i]=false;remaining[i]=0;persist();render();return;}
   statusText[i].textContent='Task timer running: '+remaining[i]+' seconds remaining.';
-  if(remaining[i]<=0){clearInterval(timers[i]);timers[i]=null;running[i]=false;remaining[i]=0;render();return;}
-  remaining[i]--;
  };
- tick();timers[i]=setInterval(tick,1000);
+ tick();timers[i]=setInterval(tick,250);
 }
 startButtons.forEach((btn,i)=>btn.addEventListener('click',()=>openReminder(i)));
 confirmButtons.forEach((btn,i)=>btn.addEventListener('click',()=>{
  if(!started[i]||running[i]||done[i])return;
- done[i]=true;render();
+ done[i]=true;savedState.completedAt[i]=Date.now();persist();render();
 }));
 openTaskButton.addEventListener('click',()=>{
  if(selectedTask<0)return;
@@ -92,7 +122,18 @@ openTaskButton.addEventListener('click',()=>{
 });
 cancelModal.addEventListener('click',()=>{modal.classList.remove('open');selectedTask=-1;});
 modal.addEventListener('click',e=>{if(e.target===modal){modal.classList.remove('open');selectedTask=-1;}});
-render();
+restoreProgress();render();
+for(let i=0;i<4;i++){
+ if(running[i]){
+  const tick=()=>{
+   remaining[i]=Math.max(0,Math.ceil((Number(savedState.startedAt[i])+durations[i]*1000-Date.now())/1000));
+   if(remaining[i]<=0){clearInterval(timers[i]);timers[i]=null;running[i]=false;remaining[i]=0;persist();render();}
+   else render();
+  };
+  timers[i]=setInterval(tick,250);
+ }
+}
+setInterval(resetExpiredSession,30000);
 getButton.addEventListener('click',async()=>{
  if(!done.every(Boolean))return;
  getButton.disabled=true;getButton.textContent='REQUESTING KEY...';out.hidden=false;out.textContent='Connecting to PERMA KEY...';
@@ -101,9 +142,17 @@ getButton.addEventListener('click',async()=>{
   let d;try{d=await r.json()}catch{d={message:'The server returned an invalid response.'}}
   if(!r.ok||d.success===false)throw Error(d.message||d.code||('HTTP '+r.status));
   const key=d.key||d.data?.key||d.free_key||d.data?.free_key;
-  if(key){out.replaceChildren();const label=document.createElement('div');label.textContent='YOUR FREE KEY';const value=document.createElement('p');value.className='key-value';value.textContent=key;const copy=document.createElement('button');copy.className='copy';copy.textContent='COPY KEY';copy.onclick=async()=>{try{await navigator.clipboard.writeText(key);copy.textContent='COPIED'}catch{copy.textContent='Copy unavailable — select the key above'}};out.append(label,value,copy)}
+  if(key){
+  const now=Date.now();
+  const serverExpiry=d.expires_at||d.data?.expires_at||d.expiresAt||d.data?.expiresAt;
+  let expiry=serverExpiry?new Date(serverExpiry).getTime():now+KEY_LIFETIME_MS;
+  if(typeof serverExpiry==='number'&&serverExpiry>0&&serverExpiry<1e12)expiry=serverExpiry*1000;
+  if(!Number.isFinite(expiry)||expiry<=now)expiry=now+KEY_LIFETIME_MS;
+  savedState.key=key;savedState.claimedAt=now;savedState.keyExpiresAt=expiry;persist();
+  out.replaceChildren();const label=document.createElement('div');label.textContent='YOUR FREE KEY · VALID FOR UP TO 6 HOURS';const value=document.createElement('p');value.className='key-value';value.textContent=key;const copy=document.createElement('button');copy.className='copy';copy.textContent='COPY KEY';copy.onclick=async()=>{try{await navigator.clipboard.writeText(key);copy.textContent='COPIED'}catch{copy.textContent='Copy unavailable — select the key above'}};const expiryNote=document.createElement('div');expiryNote.className='task-status';expiryNote.textContent='Your progress is saved in this browser. Tasks reset when the 6-hour key period expires.';out.append(label,value,copy,expiryNote)
+ }
   else{out.textContent='The API responded, but no key field was found. Server response:\n'+JSON.stringify(d,null,2)}
  }catch(e){out.textContent='Unable to retrieve your key: '+e.message+'\nPlease try again later.'}
- finally{getButton.disabled=false;getButton.textContent='GET YOUR FREE KEY'}
+ finally{getButton.disabled=!done.every(Boolean);getButton.textContent=done.every(Boolean)?'GET YOUR FREE KEY':'COMPLETE ALL TASKS TO GET KEY'}
 });
 </script></body></html>

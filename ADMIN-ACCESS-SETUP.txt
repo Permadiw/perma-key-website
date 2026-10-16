@@ -1,0 +1,20 @@
+PERMA KEY — PENGAMANAN ADMIN PANEL
+
+PENTING
+Perubahan index.html menyembunyikan tautan Admin Panel dari halaman publik, tetapi itu sendiri TIDAK mengamankan URL admin.html. File HTML statis yang berada di repository/public deployment tetap dapat dibuka jika URL-nya diketahui.
+
+Agar hanya akun Anda yang dapat membuka panel:
+1. Jangan pernah menaruh ADMIN_TOKEN di index.html, admin.html, repository, atau file ZIP publik.
+2. Di Cloudflare Dashboard, buka Zero Trust > Access > Applications.
+3. Buat aplikasi Self-hosted untuk URL admin yang benar-benar digunakan situs Anda. Jika situs memakai domain khusus, lindungi jalur admin spesifik atau gunakan subdomain admin terpisah.
+4. Tambahkan policy Action: Allow dengan Include: Emails dan masukkan hanya alamat email Anda.
+5. Pastikan tidak ada policy Allow/Bypass yang memberi akses kepada Everyone untuk URL admin tersebut.
+6. Uji URL admin menggunakan browser biasa yang belum login. Seharusnya dialihkan ke halaman login Cloudflare Access atau ditolak.
+7. Uji login menggunakan email yang diizinkan.
+8. Tetap pertahankan pemeriksaan token/otorisasi pada setiap endpoint /admin/* di Worker. Proteksi halaman tidak menggantikan proteksi API.
+
+BATASAN
+GitHub repository ini berisi situs statis. Mengubah HTML saja tidak dapat membuat satu file menjadi privat sementara file lain tetap publik. Cloudflare Access harus benar-benar dikonfigurasi pada domain/hostname/path yang melayani halaman admin. Jika situs tidak berada di belakang Cloudflare Access, gunakan hosting admin terpisah yang privat.
+
+TOKEN ADMIN
+Token lama tidak dimasukkan ke file ini atau ke HTML agar tidak bocor ke repository publik. Masukkan token hanya pada halaman admin yang sudah dilindungi, dan pertimbangkan merotasi token jika pernah ditempel ke chat, log, atau repository.

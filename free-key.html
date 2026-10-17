@@ -220,10 +220,34 @@ function restoreTaskTimer(){
 }
 
 async function post(path,data){
- const r=await fetch(API+path,{method:'POST',headers:{'Content-Type':'text/plain;charset=UTF-8'},body:JSON.stringify(data),cache:'no-store'});
- const d=await r.json().catch(()=>({message:'Invalid server response'}));
- if(!r.ok||d.success!==true)throw Error(d.message||d.code||('HTTP '+r.status));
- return d;
+ let lastError=null;
+ for(let attempt=0;attempt<3;attempt++){
+  try{
+   const controller=new AbortController();
+   const timeout=setTimeout(()=>controller.abort(),12000);
+   let r;
+   try{
+    r=await fetch(API+path,{method:'POST',headers:{'Content-Type':'text/plain;charset=UTF-8','Accept':'application/json'},body:JSON.stringify(data),cache:'no-store',signal:controller.signal,mode:'cors'});
+   }finally{clearTimeout(timeout)}
+   const d=await r.json().catch(()=>({message:'Server returned an unreadable response.'}));
+   if(!r.ok||d.success!==true){
+    const error=new Error(d.message||d.code||('HTTP '+r.status));
+    error.retryable=r.status>=500||r.status===429;
+    if(error.retryable&&attempt<2){lastError=error;await new Promise(resolve=>setTimeout(resolve,700*(attempt+1)));continue}
+    throw error;
+   }
+   return d;
+  }catch(e){
+   lastError=e;
+   const networkFailure=e instanceof TypeError||e.name==='AbortError';
+   if(!networkFailure||attempt>=2)break;
+   await new Promise(resolve=>setTimeout(resolve,700*(attempt+1)));
+  }
+ }
+ if(lastError&&(lastError instanceof TypeError||lastError.name==='AbortError')){
+  throw Error('Tidak dapat terhubung ke PERMA KEY API setelah 3 percobaan. Periksa koneksi internet, lalu muat ulang halaman. Jika tetap gagal, layanan API/CORS perlu diperiksa.');
+ }
+ throw lastError||Error('Request gagal. Silakan coba lagi.');
 }
 async function completeTask(task,card,content,status,start){
  try{

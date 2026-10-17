@@ -684,7 +684,7 @@ export default {
       return new Response(JSON.stringify({
         success: true,
         service: "PERMA KEY API",
-        deployment: "repair-deploy-2026-10-17-v2",
+        deployment: "repair-deploy-2026-10-17-v3",
         status: "online",
         time: new Date().toISOString(),
         databaseConfigured: !!env.DB

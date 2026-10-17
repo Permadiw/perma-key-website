@@ -616,7 +616,7 @@ export default {
     // Handle health at the entry point, before routing, D1 setup, or any other logic.
     // This makes the deployment probe independent from all API initialization.
     const healthUrl = new URL(request.url);
-    if (request.method.toUpperCase() === "GET" && healthUrl.pathname.replace(/\\/+$/,"") === "/health") {
+    if (request.method.toUpperCase() === "GET" && (healthUrl.pathname === "/health" || healthUrl.pathname === "/health/")) {
       return new Response(JSON.stringify({
         success: true,
         service: "PERMA KEY API",

@@ -84,12 +84,23 @@ async function schema(db){
   await ensureColumn(db,"free_task_sessions","task_started_json","TEXT NOT NULL DEFAULT '{}'");
   await ensureColumn(db,"free_task_sessions","human_verified_at","INTEGER");
 
-  await db.prepare("UPDATE tasks SET active=0 WHERE id IN ('read_rules','install_guide','security_basics','api_basics')").run();
-  for(const t of TASKS) await db.prepare(`INSERT INTO tasks
-    (id,title,description,url,duration_seconds,active,created_at) VALUES(?,?,?,?,?,1,?)
-    ON CONFLICT(id) DO UPDATE SET title=excluded.title,description=excluded.description,url=excluded.url,
-    duration_seconds=excluded.duration_seconds,active=1`)
-    .bind(...t,new Date().toISOString()).run();
+  await db.prepare("UPDATE tasks SET active=0,enabled=0 WHERE id IN ('subscribe','like','watch','comment','read_rules','install_guide','security_basics','api_basics')").run();
+  for(let i=0;i<TASKS.length;i++){
+    const t=TASKS[i];
+    await db.prepare(`INSERT INTO tasks
+      (id,title,description,url,duration_seconds,active,enabled,sort_order,created_at)
+      VALUES(?,?,?,?,?,1,1,?,?) ON CONFLICT(id) DO NOTHING`)
+      .bind(t[0],t[1],t[2],t[3],t[4],(i+1)*10,new Date().toISOString()).run();
+  }
+  await db.prepare(`UPDATE tasks SET sort_order=CASE id
+    WHEN 'subscribe_channel' THEN 10 WHEN 'like_video' THEN 20
+    WHEN 'comment_video' THEN 30 WHEN 'watch_video' THEN 40
+    WHEN 'discord_join' THEN 50 ELSE sort_order END
+    WHERE id IN ('subscribe_channel','like_video','comment_video','watch_video','discord_join')`).run();
+}
+async function activeTasks(db){
+  const result=await db.prepare("SELECT id,title,description,url,duration_seconds FROM tasks WHERE active=1 AND enabled=1 ORDER BY sort_order ASC,rowid ASC").all();
+  return (result.results||[]).map(t=>({...t,duration_seconds:Math.max(0,Number(t.duration_seconds)||0)}));
 }
 async function verifyTurnstile(req, token, env){
   const secret = String(env.TURNSTILE_SECRET_KEY || "");
@@ -177,23 +188,23 @@ async function handle(req,env){
   if(p==="/health"&&m==="GET")return res({success:true,service:"PERMA KEY API",status:"online",time:new Date().toISOString()});
 
   if(p==="/tasks/list"&&m==="GET"){
-    const r=await db.prepare("SELECT id,title,description,url,duration_seconds FROM tasks WHERE active=1 ORDER BY rowid").all();
-    return res({success:true,tasks:r.results||[]});
+    return res({success:true,tasks:await activeTasks(db)});
   }
 
   if(p==="/public/tasks/start"&&m==="POST"){
-    const b=await body(req),existingId=str(b.session_id,100);
+    const b=await body(req),existingId=str(b.session_id,100),tasks=await activeTasks(db);
+    if(!tasks.length)return err("NO_ACTIVE_TASKS","No active Free Key tasks are configured. Please contact the site owner.",503);
     if(existingId){
       const existing=await db.prepare("SELECT * FROM free_task_sessions WHERE session_id=?").bind(existingId).first();
       if(existing&&now()-Number(existing.created_at)<=7200){
-        return res({success:true,session_id:existingId,completed_tasks:JSON.parse(existing.completed_json||"[]"),human_verified:!!existing.human_verified_at,tasks:TASKS.map(x=>({id:x[0],title:x[1],description:x[2]}))});
+        return res({success:true,session_id:existingId,completed_tasks:JSON.parse(existing.completed_json||"[]"),human_verified:!!existing.human_verified_at,tasks});
       }
     }
     const ip=await hash(req.headers.get("CF-Connecting-IP")||"unknown");
     const sid=crypto.randomUUID(),t=now();
     await db.prepare("INSERT INTO free_task_sessions(session_id,completed_json,created_at,updated_at,ip_hash) VALUES(?,'[]',?,?,?)")
       .bind(sid,t,t,ip).run();
-    return res({success:true,session_id:sid,completed_tasks:[],human_verified:false,tasks:TASKS.map(x=>({id:x[0],title:x[1],description:x[2]}))});
+    return res({success:true,session_id:sid,completed_tasks:[],human_verified:false,tasks});
   }
 
   if(p==="/public/tasks/verify"&&m==="POST"){
@@ -201,8 +212,8 @@ async function handle(req,env){
     if(!sid)return err("SESSION_REQUIRED","Complete the tasks before human verification.",403);
     const session=await db.prepare("SELECT * FROM free_task_sessions WHERE session_id=?").bind(sid).first();
     if(!session||now()-Number(session.created_at)>7200)return err("SESSION_EXPIRED","Start the task flow again.",410);
-    const completed=JSON.parse(session.completed_json||"[]");
-    if(!TASKS.every(x=>completed.includes(x[0])))return err("TASKS_INCOMPLETE","Complete all tasks before human verification.",403);
+    const completed=JSON.parse(session.completed_json||"[]"),tasks=await activeTasks(db);
+    if(!tasks.length||!tasks.every(x=>completed.includes(x.id)))return err("TASKS_INCOMPLETE","Complete all active tasks before human verification.",403);
     const humanCheck=await verifyTurnstile(req,token,env);
     if(!humanCheck.ok)return err(humanCheck.code,humanCheck.message,403);
     await db.prepare("UPDATE free_task_sessions SET human_verified_at=?,updated_at=? WHERE session_id=?")
@@ -211,18 +222,20 @@ async function handle(req,env){
   }
 
   if(p==="/public/tasks/begin"&&m==="POST"){
-    const b=await body(req),sid=str(b.session_id,100),taskId=str(b.task_id,100);
-    if(!sid||!TASKS.some(x=>x[0]===taskId))return err("INVALID_TASK","A valid session_id and task_id are required.");
+    const b=await body(req),sid=str(b.session_id,100),taskId=str(b.task_id,100),tasks=await activeTasks(db);
+    const index=tasks.findIndex(x=>x.id===taskId);
+    if(!sid||index<0)return err("INVALID_TASK","A valid session_id and active task_id are required.");
     const session=await db.prepare("SELECT * FROM free_task_sessions WHERE session_id=?").bind(sid).first();
     if(!session||now()-Number(session.created_at)>7200)return err("SESSION_EXPIRED","Start the task flow again.",410);
-    const completed=JSON.parse(session.completed_json||"[]"),index=TASKS.findIndex(x=>x[0]===taskId);
-    if(index>0&&!completed.includes(TASKS[index-1][0]))return err("TASK_LOCKED","Complete the previous task first.",409);
+    const completed=JSON.parse(session.completed_json||"[]");
+    if(index>0&&!completed.includes(tasks[index-1].id))return err("TASK_LOCKED","Complete the previous task first.",409);
     if(completed.includes(taskId))return res({success:true,completed:true,task_id:taskId});
     const starts=JSON.parse(session.task_started_json||"{}");
     if(!Number(starts[taskId]))starts[taskId]=now();
     await db.prepare("UPDATE free_task_sessions SET task_started_json=?,updated_at=? WHERE session_id=?")
       .bind(JSON.stringify(starts),now(),sid).run();
-    return res({success:true,task_id:taskId,started_at:Number(starts[taskId]),duration_seconds:Number(TASKS[index][4]),deadline:Number(starts[taskId])+Number(TASKS[index][4])});
+    const duration=Number(tasks[index].duration_seconds)||0;
+    return res({success:true,task_id:taskId,started_at:Number(starts[taskId]),duration_seconds:duration,deadline:Number(starts[taskId])+duration});
   }
 
   // Legacy quiz endpoint disabled: all tasks use the same timer + honest confirmation flow.
@@ -235,19 +248,20 @@ async function handle(req,env){
     if(!sid||!taskId||!confirmed)return err("CONFIRMATION_REQUIRED","Confirm that you genuinely completed this task.",400);
     const session=await db.prepare("SELECT * FROM free_task_sessions WHERE session_id=?").bind(sid).first();
     if(!session||now()-Number(session.created_at)>7200)return err("SESSION_EXPIRED","Start the task flow again.",410);
-    const completed=JSON.parse(session.completed_json||"[]");
-    const index=TASKS.findIndex(x=>x[0]===taskId);
-    if(index<0)return err("INVALID_TASK","Unknown task.",400);
-    if(index>0&&!completed.includes(TASKS[index-1][0]))return err("TASK_LOCKED","Complete the previous task first.",409);
-    if(completed.includes(taskId))return res({success:true,completed:true,task_id:taskId,completed_tasks:completed,all_complete:TASKS.every(x=>completed.includes(x[0]))});
-    const starts=JSON.parse(session.task_started_json||"{}"),startedAt=Number(starts[taskId]||0),duration=Number(TASKS[index][4]);
+    const completed=JSON.parse(session.completed_json||"[]"),tasks=await activeTasks(db);
+    const index=tasks.findIndex(x=>x.id===taskId);
+    if(index<0)return err("INVALID_TASK","Unknown or inactive task.",400);
+    if(index>0&&!completed.includes(tasks[index-1].id))return err("TASK_LOCKED","Complete the previous task first.",409);
+    if(completed.includes(taskId))return res({success:true,completed:true,task_id:taskId,completed_tasks:completed,all_complete:tasks.length>0&&tasks.every(x=>completed.includes(x.id))});
+    const starts=JSON.parse(session.task_started_json||"{}"),startedAt=Number(starts[taskId]||0),duration=Number(tasks[index].duration_seconds)||0;
     if(!startedAt)return err("TASK_NOT_STARTED","Start this task before confirming it.",409);
     if(now()-startedAt<duration)return err("TASK_TIMER_ACTIVE","Please wait until the server-side timer finishes.",409);
     completed.push(taskId);
     await db.prepare("UPDATE free_task_sessions SET completed_json=?,challenge_task=NULL,challenge_answer=NULL,challenge_expires_at=NULL,updated_at=? WHERE session_id=?")
       .bind(JSON.stringify(completed),now(),sid).run();
     await audit(db,"FREE_TASK_CONFIRMED",taskId);
-    return res({success:true,completed:true,task_id:taskId,completed_tasks:completed,all_complete:TASKS.every(x=>completed.includes(x[0]))});
+    const currentTasks=await activeTasks(db);
+    return res({success:true,completed:true,task_id:taskId,completed_tasks:completed,all_complete:currentTasks.length>0&&currentTasks.every(x=>completed.includes(x.id))});
   }
 
   if(p==="/public/get-key"&&m==="POST"){
@@ -256,8 +270,8 @@ async function handle(req,env){
     if(!sid)return err("TASKS_REQUIRED","Complete the website tasks before requesting a key.",403);
     const session=await db.prepare("SELECT * FROM free_task_sessions WHERE session_id=?").bind(sid).first();
     if(!session||now()-Number(session.created_at)>7200)return err("SESSION_EXPIRED","Start the task flow again.",410);
-    const completed=JSON.parse(session.completed_json||"[]");
-    if(!TASKS.every(x=>completed.includes(x[0])))return err("TASKS_INCOMPLETE","Complete all server-checked website tasks first.",403);
+    const completed=JSON.parse(session.completed_json||"[]"),tasks=await activeTasks(db);
+    if(!tasks.length||!tasks.every(x=>completed.includes(x.id)))return err("TASKS_INCOMPLETE","Complete all active server-checked website tasks first.",403);
     if(!Number(session.human_verified_at)||now()-Number(session.human_verified_at)>600)return err("HUMAN_VERIFICATION_REQUIRED","Please verify that you are human before requesting a key.",403);
     if(session.issued_key_hash)return err("KEY_ALREADY_ISSUED","This task session has already received a key.",409);
     const issued=await create(db,"FREE","Website tasks completed",true);
@@ -315,7 +329,7 @@ async function handle(req,env){
   if(p==="/admin/create"&&m==="POST"){
     const b=await body(req),type=str(b.type||b.key_type||"FREE").toUpperCase();
     if(!["FREE","PREMIUM"].includes(type))return err("INVALID_TYPE","type must be FREE or PREMIUM.");
-    return res({success:true,code:"KEY_CREATED",message:`${type} key created and activated.`,...await create(db,type,b.note||"",type==="PREMIUM")});
+    return res({success:true,code:"KEY_CREATED",message:`${type} key created and activated.`,...await create(db,type,b.note||"",true)});
   }
 
   if(p==="/admin/activate"&&m==="POST"){

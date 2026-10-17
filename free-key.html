@@ -10,7 +10,7 @@
 <body><main class="wrap">
 <div class="brand brandline"><img src="./file_00000000e7b88211b611e843b0324eaf.png" alt="PERMA Diw Studio logo"><span>PERMA DIW STUDIO<small>PERMA KEY PORTAL</small></span></div>
 <section class="card">
-<a class="discord-join" href="https://discord.gg/yH7JFNPFB" target="_blank" rel="noopener noreferrer">Join PERMA Diw Studio Discord</a>
+<a class="discord-join" href="https://discord.gg/PvKTnGnJs" target="_blank" rel="noopener noreferrer">Join PERMA Diw Studio Discord</a>
 <div class="eyebrow">Free access · Website tasks</div><h1>Get your FREE key</h1>
 <p class="intro">Verify that you are human, then complete five tasks: subscribe to the channel, like and comment on the video, watch for at least one minute, and join the PERMA Diw Studio Discord.</p>
 <div class="notice">Please complete every task honestly. Only confirm tasks you have genuinely completed.</div>
@@ -31,11 +31,11 @@ const API='https://perma-key-api.herdiansyah0239.workers.dev';
 const STORAGE_KEY='perma_free_key_internal_tasks_v1';
 const KEY_LIFETIME_MS=6*60*60*1000;
 const TASKS=[
-{id:'subscribe_channel',title:'Subscribe to the PERMA Diw Studio YouTube channel',desc:'Open the official channel and subscribe if you choose to. Return and confirm honestly; this website cannot independently verify a subscription without YouTube account authorization.',url:'https://www.youtube.com/channel/UCiSTRqsRTp0Lem3_qxYQIwA',duration:30},
-{id:'like_video',title:'Like the PERMA KEY YouTube video',desc:'Open the video and like it if you choose to. Return and confirm honestly; a timer cannot prove a like.',url:'https://youtu.be/JcgUyeInJpw',duration:30},
-{id:'comment_video',title:'Comment on the PERMA KEY YouTube video',desc:'Leave a relevant, non-spam comment if you choose to, then return and confirm honestly. This site does not automatically verify comments.',url:'https://youtu.be/JcgUyeInJpw',duration:30},
-{id:'watch_video',title:'Watch the PERMA KEY video for at least 1 minute',desc:'Keep the video open and watch at least one minute before returning here.',url:'https://youtu.be/JcgUyeInJpw',duration:60},
-{id:'discord_join',title:'Join the PERMA Diw Studio Discord',desc:'Open the official invite, join the server, then return here.',url:'https://discord.gg/yH7JFNPFB',duration:30}
+{id:'subscribe_channel',title:'SUBSCRIBE TO THE PERMA DIW STUDIO YOUTUBE CHANNEL',desc:'Open the official channel and subscribe if you choose to. Return and confirm honestly; this website cannot independently verify a subscription without YouTube account authorization.',url:'https://www.youtube.com/channel/UCiSTRqsRTp0Lem3_qxYQIwA',duration:30},
+{id:'like_video',title:'LIKE A PERMA DIW STUDIO YOUTUBE VIDEO',desc:'Open a video published by PERMA DIW STUDIO and like it if you choose to. Return and confirm honestly; a timer cannot prove a like.',url:'https://www.youtube.com/channel/UCiSTRqsRTp0Lem3_qxYQIwA/videos',duration:30},
+{id:'comment_video',title:'COMMENT ON A PERMA DIW STUDIO YOUTUBE VIDEO',desc:'Leave a relevant, non-spam comment on a PERMA DIW STUDIO video if you choose to, then return and confirm honestly. This site does not automatically verify comments.',url:'https://www.youtube.com/channel/UCiSTRqsRTp0Lem3_qxYQIwA/videos',duration:30},
+{id:'watch_video',title:'WATCH A PERMA DIW STUDIO YOUTUBE VIDEO FOR AT LEAST 1 MINUTE',desc:'Open a PERMA DIW STUDIO video, watch for at least one minute, then return here.',url:'https://www.youtube.com/channel/UCiSTRqsRTp0Lem3_qxYQIwA/videos',duration:60},
+{id:'discord_join',title:'JOIN THE PERMA DIW STUDIO DISCORD',desc:'Open the official invite, join the server, then return here.',url:'https://discord.gg/PvKTnGnJs',duration:30}
 ];
 const TURNSTILE_SITE_KEY='0x4AAAAAAFZGQ4AtU1ySVLDH';
 let sessionId=null,completed=new Set(),busy=false,keyCountdownTimer=null,taskTimerInterval=null,currentTaskNotice=null,turnstileToken="",sessionStartPending=false,humanVerified=false,turnstileWidgetId=null,verifyBusy=false;
@@ -190,7 +190,7 @@ window.permaHumanVerified=async function(token){
   getBtn.disabled=false;getBtn.textContent='GET YOUR FREE KEY';
  }catch(e){
   turnstileToken='';humanVerified=false;
-  status.textContent='Verification failed or expired. Please complete the human check again.';
+  status.textContent='Verification failed: '+(e.message||'the security check could not be confirmed')+'. Please retry. If this repeats, the website owner must check the Turnstile site key, secret key, and allowed domain in Cloudflare.';
   status.className='task-status error';
   if(window.turnstile&&turnstileWidgetId!==null)window.turnstile.reset(turnstileWidgetId);
  }finally{verifyBusy=false}

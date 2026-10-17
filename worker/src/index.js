@@ -203,40 +203,86 @@ gui.Name = "PermaKeyLoader"
 gui.ResetOnSpawn = false
 local ok = pcall(function() gui.Parent = game:GetService("CoreGui") end)
 if not ok then gui.Parent = player:WaitForChild("PlayerGui") end
+-- Five-second branded intro before the key form appears.
+local splash = Instance.new("Frame", gui)
+splash.Size = UDim2.fromOffset(330, 150)
+splash.AnchorPoint = Vector2.new(0.5, 0.5)
+splash.Position = UDim2.fromScale(0.5, 0.5)
+splash.BackgroundColor3 = Color3.fromRGB(14, 25, 44)
+splash.BorderSizePixel = 0
+local splashCorner = Instance.new("UICorner", splash); splashCorner.CornerRadius = UDim.new(0, 16)
+local splashStroke = Instance.new("UIStroke", splash); splashStroke.Color = Color3.fromRGB(70, 220, 255); splashStroke.Thickness = 2
+local splashTitle = Instance.new("TextLabel", splash)
+splashTitle.Size = UDim2.new(1, -24, 0, 34); splashTitle.Position = UDim2.fromOffset(12, 15)
+splashTitle.BackgroundTransparency = 1; splashTitle.Text = "PERMA IMPORT"
+splashTitle.TextColor3 = Color3.fromRGB(248, 252, 255); splashTitle.Font = Enum.Font.GothamBlack; splashTitle.TextSize = 22
+local splashSub = Instance.new("TextLabel", splash)
+splashSub.Size = UDim2.new(1, -24, 0, 22); splashSub.Position = UDim2.fromOffset(12, 51)
+splashSub.BackgroundTransparency = 1; splashSub.Text = "RBXM TO STUDIO LITE  •  SECURE ACCESS"
+splashSub.TextColor3 = Color3.fromRGB(100, 225, 255); splashSub.Font = Enum.Font.GothamBold; splashSub.TextSize = 10
+local splashTrack = Instance.new("Frame", splash)
+splashTrack.Size = UDim2.new(1, -28, 0, 8); splashTrack.Position = UDim2.fromOffset(14, 88)
+splashTrack.BackgroundColor3 = Color3.fromRGB(39, 56, 80); splashTrack.BorderSizePixel = 0
+Instance.new("UICorner", splashTrack).CornerRadius = UDim.new(1, 0)
+local splashFill = Instance.new("Frame", splashTrack)
+splashFill.Size = UDim2.new(0, 0, 1, 0); splashFill.BackgroundColor3 = Color3.fromRGB(66, 210, 255); splashFill.BorderSizePixel = 0
+Instance.new("UICorner", splashFill).CornerRadius = UDim.new(1, 0)
+local splashStatus = Instance.new("TextLabel", splash)
+splashStatus.Size = UDim2.new(1, -28, 0, 20); splashStatus.Position = UDim2.fromOffset(14, 105)
+splashStatus.BackgroundTransparency = 1; splashStatus.Text = "INITIALIZING SECURE SESSION..."
+splashStatus.TextColor3 = Color3.fromRGB(198, 224, 247); splashStatus.Font = Enum.Font.GothamBold; splashStatus.TextSize = 10
+for i = 1, 5 do
+  splashStatus.Text = ({"CONNECTING TO PERMA SERVER...","PREPARING KEY GATE...","LOADING IMPORT MODULES...","CHECKING SESSION...","READY — ENTER YOUR KEY"})[i]
+  game:GetService("TweenService"):Create(splashFill, TweenInfo.new(1, Enum.EasingStyle.Linear), {Size = UDim2.new(i / 5, 0, 1, 0)}):Play()
+  task.wait(1)
+end
+splash:Destroy()
 local frame = Instance.new("Frame", gui)
-frame.Size = UDim2.fromOffset(320, 230)
-frame.Position = UDim2.new(0.5, -160, 0.5, -115)
+frame.Size = UDim2.fromOffset(340, 290)
+frame.Position = UDim2.new(0.5, -170, 0.5, -145)
 frame.BackgroundColor3 = Color3.fromRGB(10, 17, 31)
 frame.BorderSizePixel = 0
 local corner = Instance.new("UICorner", frame); corner.CornerRadius = UDim.new(0, 12)
 local stroke = Instance.new("UIStroke", frame); stroke.Color = Color3.fromRGB(45, 180, 230); stroke.Thickness = 1.5
 local title = Instance.new("TextLabel", frame)
-title.Size = UDim2.new(1, -24, 0, 36); title.Position = UDim2.fromOffset(12, 8)
+title.Size = UDim2.new(1, -24, 0, 32); title.Position = UDim2.fromOffset(12, 8)
 title.BackgroundTransparency = 1; title.Text = "PERMA KEY"; title.TextColor3 = Color3.fromRGB(100, 225, 255)
 title.Font = Enum.Font.GothamBold; title.TextSize = 21
+local freeBadge = Instance.new("TextLabel", frame)
+freeBadge.Size = UDim2.fromOffset(143, 24); freeBadge.Position = UDim2.fromOffset(14, 43)
+freeBadge.BackgroundColor3 = Color3.fromRGB(19, 125, 83); freeBadge.BorderSizePixel = 0
+freeBadge.Text = "✦  FREE KEY  •  6 HOURS"; freeBadge.TextColor3 = Color3.fromRGB(237, 255, 247)
+freeBadge.Font = Enum.Font.GothamBold; freeBadge.TextSize = 9
+Instance.new("UICorner", freeBadge).CornerRadius = UDim.new(0, 7)
+local premiumBadge = Instance.new("TextLabel", frame)
+premiumBadge.Size = UDim2.fromOffset(151, 24); premiumBadge.Position = UDim2.fromOffset(175, 43)
+premiumBadge.BackgroundColor3 = Color3.fromRGB(103, 65, 177); premiumBadge.BorderSizePixel = 0
+premiumBadge.Text = "♛  PREMIUM  •  LIFETIME"; premiumBadge.TextColor3 = Color3.fromRGB(255, 248, 226)
+premiumBadge.Font = Enum.Font.GothamBold; premiumBadge.TextSize = 9
+Instance.new("UICorner", premiumBadge).CornerRadius = UDim.new(0, 7)
 local input = Instance.new("TextBox", frame)
-input.Size = UDim2.new(1, -28, 0, 38); input.Position = UDim2.fromOffset(14, 52)
+input.Size = UDim2.new(1, -28, 0, 38); input.Position = UDim2.fromOffset(14, 83)
 input.BackgroundColor3 = Color3.fromRGB(20, 31, 49); input.TextColor3 = Color3.new(1,1,1)
 input.PlaceholderText = "Masukkan Free / Premium Key"; input.PlaceholderColor3 = Color3.fromRGB(145,160,180)
 input.Text = ""; input.ClearTextOnFocus = false; input.Font = Enum.Font.Gotham; input.TextSize = 13
 local ic = Instance.new("UICorner", input); ic.CornerRadius = UDim.new(0, 7)
 local button = Instance.new("TextButton", frame)
-button.Size = UDim2.new(1, -28, 0, 36); button.Position = UDim2.fromOffset(14, 98)
+button.Size = UDim2.new(1, -28, 0, 36); button.Position = UDim2.fromOffset(14, 129)
 button.BackgroundColor3 = Color3.fromRGB(0, 145, 210); button.TextColor3 = Color3.new(1,1,1)
 button.Text = "VERIFY KEY & EXECUTE"; button.Font = Enum.Font.GothamBold; button.TextSize = 13
 local bc = Instance.new("UICorner", button); bc.CornerRadius = UDim.new(0, 7)
 local status = Instance.new("TextLabel", frame)
-status.Size = UDim2.new(1, -24, 0, 30); status.Position = UDim2.fromOffset(12, 176)
+status.Size = UDim2.new(1, -24, 0, 30); status.Position = UDim2.fromOffset(12, 247)
 status.BackgroundTransparency = 1; status.TextColor3 = Color3.fromRGB(180, 200, 220)
 status.Text = "Free Key berlaku 6 jam; Premium mengikuti pengaturan admin."
 status.Font = Enum.Font.Gotham; status.TextSize = 10; status.TextWrapped = true
 local getFree = Instance.new("TextButton", frame)
-getFree.Size = UDim2.new(1, -28, 0, 30); getFree.Position = UDim2.fromOffset(14, 140)
+getFree.Size = UDim2.new(1, -28, 0, 30); getFree.Position = UDim2.fromOffset(14, 171)
 getFree.BackgroundColor3 = Color3.fromRGB(28, 105, 72); getFree.TextColor3 = Color3.new(1,1,1)
 getFree.Text = "GET FREE KEY — OPEN WEBSITE"; getFree.Font = Enum.Font.GothamBold; getFree.TextSize = 11
 local gfc = Instance.new("UICorner", getFree); gfc.CornerRadius = UDim.new(0, 7)
 getFree.Activated:Connect(function()
-  local url = "https://permadiw.github.io/perma-key-website/"
+  local url = "https://permafreekey.pages.dev/"
   local opened = pcall(function() game:GetService("GuiService"):OpenBrowserWindow(url) end)
   if not opened then
     local copied = pcall(function()
@@ -267,6 +313,9 @@ button.Activated:Connect(function()
       button.Text = "VERIFY KEY & EXECUTE"; busy = false; return
     end
     status.Text = "Key valid. Memuat script..."
+    local authEnv = _G
+    pcall(function() if type(getgenv) == "function" then authEnv = getgenv() end end)
+    pcall(function() authEnv.PERMA_KEY_AUTHORIZED = true; authEnv.PERMA_KEY_TYPE = string.find(key, "PREMIUM", 1, true) and "PREMIUM" or "FREE" end)
     pcall(function()
       local write = (type(getgenv)=="function" and getgenv().writefile) or writefile
       if type(write)=="function" then write("PERMA_IMPORT_LAST_KEY.txt", key) end

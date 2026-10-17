@@ -25,6 +25,55 @@ input::placeholder{color:#819bb9;opacity:1}
 .feature-content[hidden]{display:none!important}
 .panel>.feature-toggle{font-size:15px}
 h2.feature-subtitle{margin-top:18px}
+
+/* PERMA Admin — refined dashboard theme */
+:root{--bg:#070c15;--panel:#101b2d;--line:#294563;--txt:#f4f8ff;--muted:#b1c3da;--blue:#398fff;--cyan:#5ce6ff;--green:#5ce7b4;--gold:#ffd67a}
+html{scroll-behavior:smooth}
+body{position:relative;isolation:isolate;overflow-x:hidden;padding:clamp(12px,2.5vw,26px);background:radial-gradient(ellipse at 5% 0%,#153b61 0,transparent 38%),radial-gradient(ellipse at 100% 24%,#22214e 0,transparent 33%),linear-gradient(145deg,#070b14,#0b1424 55%,#070d18)}
+body:before,body:after{content:"";position:fixed;z-index:-1;pointer-events:none;width:42vw;height:42vw;min-width:300px;min-height:300px;border-radius:50%;filter:blur(95px);opacity:.14;animation:adminAurora 20s ease-in-out infinite alternate}
+body:before{top:-20vw;left:-12vw;background:linear-gradient(135deg,#20d9f2,#276bff)}
+body:after{right:-16vw;bottom:-18vw;background:linear-gradient(135deg,#8758ff,#13d9bb);animation-delay:-9s}
+.wrap{animation:adminRise .6s cubic-bezier(.2,.7,.2,1) both}
+.brandline{gap:14px;font-size:13px;letter-spacing:2.4px;text-shadow:0 0 25px #56dfff22}
+.brandline img{width:48px;height:48px;border-radius:15px;padding:4px;box-shadow:0 0 26px #42d7ff22;border-color:#4779a4}
+.hero{padding:22px 0 12px}
+h1{font-size:clamp(30px,5vw,46px);letter-spacing:-1.5px;background:linear-gradient(100deg,#fff,#66e6ff,#c2b5ff,#fff);background-size:250% auto;-webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent;animation:permaGradientFlow 7s linear infinite}
+.hero .muted{max-width:760px;font-size:14px;line-height:1.8}
+.panel{position:relative;overflow:hidden;border-color:#2a4664;background:linear-gradient(145deg,#111f33f5,#0b1424f7 72%);box-shadow:0 22px 60px #0005,inset 0 1px #ffffff08;backdrop-filter:blur(16px);-webkit-backdrop-filter:blur(16px);transition:border-color .2s,transform .2s}
+.panel:before{content:"";position:absolute;left:8%;right:8%;top:0;height:1px;background:linear-gradient(90deg,transparent,#64eaff,#9c9dff,transparent);background-size:200% 100%;animation:permaGradientFlow 6s linear infinite;pointer-events:none}
+.panel h2{letter-spacing:.1px;color:#f4f8ff}
+.stats{gap:12px}
+.stat{position:relative;overflow:hidden;border-color:#294866;background:linear-gradient(145deg,#102139f2,#0a1423f5);box-shadow:inset 0 1px #ffffff08;transition:transform .2s,border-color .2s}
+.stat:after{content:"";position:absolute;left:0;top:0;bottom:0;width:3px;background:linear-gradient(180deg,#47e3f6,#578eff,#a78bfa)}
+.stat:hover{transform:translateY(-2px);border-color:#4c83ac}
+.stat strong{font-variant-numeric:tabular-nums;color:#f7fbff}
+label{color:#c1d3e8}
+input,select{border-color:#2a4563!important;background:#080f1c!important;color:#f4f9ff!important;min-height:43px;transition:border-color .2s,box-shadow .2s}
+input:focus,select:focus{outline:none;border-color:#4bdff5!important;box-shadow:0 0 0 3px #3ddaf51a,0 0 22px #3ddaf510}
+input::placeholder{color:#839bb8!important;opacity:1}
+button{min-height:42px;background:linear-gradient(100deg,#176be8,#0caecb,#5688ff,#176be8)!important;background-size:250% 100%!important;animation:permaGradientFlow 8s linear infinite;transition:transform .18s,filter .18s,box-shadow .18s!important;box-shadow:0 6px 18px #168fff16}
+button:hover:not(:disabled){transform:translateY(-1px);filter:brightness(1.1);box-shadow:0 10px 26px #168fff24}
+button:active:not(:disabled){transform:translateY(0) scale(.99)}
+button.secondary{background:linear-gradient(120deg,#172b43,#122239)!important;border:1px solid #31506f!important;animation:none}
+button.danger{background:linear-gradient(100deg,#a52d49,#d83c63)!important;animation:none}
+button.good{background:linear-gradient(100deg,#087a62,#24b98b)!important;animation:none}
+.notice{border-color:#345571!important;background:linear-gradient(110deg,#11263cdd,#101a2bdd)!important;color:#d5e5f7}
+.status{color:#d5e5f7}
+.keybox{border-color:#3b718e!important;background:linear-gradient(145deg,#0d222e,#0c1928)!important;box-shadow:inset 0 0 24px #3ddaf509}
+.tablewrap{border:1px solid #263e59;border-radius:12px;background:#08111e;overflow:auto}
+table{border-collapse:separate;border-spacing:0}
+thead th{position:sticky;top:0;z-index:1;background:#13243a;color:#c8def4}
+tbody tr{transition:background .15s}
+tbody tr:hover{background:#13243a88}
+td,th{border-bottom:1px solid #1d3048}
+.foot{color:#8da4bf}
+.feature-toggle{background:linear-gradient(110deg,#142b44,#0e1a2b)!important;border-color:#31516f!important;transition:border-color .2s,transform .2s}
+.feature-toggle:hover{transform:translateY(-1px)}
+@keyframes adminAurora{0%{transform:translate3d(0,0,0) scale(1)}100%{transform:translate3d(7vw,5vh,0) scale(1.18)}}
+@keyframes adminRise{from{opacity:0;transform:translateY(12px)}to{opacity:1;transform:translateY(0)}}
+@media(max-width:680px){.stats{gap:8px}.stat{padding:11px}.stat strong{font-size:22px}.panel{padding:14px}.hero{padding-top:16px}}
+@media(prefers-reduced-motion:reduce){body:before,body:after,.wrap,.panel:before{animation:none!important}}
+
 </style></head>
 <body><main class="wrap">
 <div class="brand brandline"><img src="./file_00000000e7b88211b611e843b0324eaf.png" alt="PERMA Diw Studio logo"><span>PERMA DIW STUDIO<small>KEY MANAGEMENT</small></span></div><header class="hero"><h1>Admin Dashboard</h1><p class="muted">Kelola key FREE 6 jam dan PREMIUM Lifetime, pantau status, serta lihat sisa waktu dari data yang dikirim API.</p></header>

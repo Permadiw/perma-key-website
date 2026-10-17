@@ -183,7 +183,7 @@ async function handle(req,env){
     return res({success:true,code:"SUBMISSION_RECEIVED",message:"Submission received for review.",submission_id:r.meta?.last_row_id??null});
   }
 
-  const paths=["/admin/list","/admin/create","/admin/activate","/admin/revoke","/admin/tasks","/admin/tasks/create","/admin/tasks/review","/admin/events"];
+  const paths=["/admin/list","/admin/create","/admin/activate","/admin/revoke","/admin/delete","/admin/tasks","/admin/tasks/create","/admin/tasks/review","/admin/events"];
   if(paths.includes(p)&&!admin(req,env))return err("UNAUTHORIZED","Admin authorization required.",401);
 
   if(p==="/admin/list"&&m==="GET"){
@@ -213,6 +213,15 @@ async function handle(req,env){
     await db.prepare("UPDATE keys SET status='REVOKED' WHERE key_hash=?").bind(r.key_hash).run();
     await audit(db,"KEY_REVOKED",r.key_type);
     return res({success:true,code:"KEY_REVOKED",key_type:r.key_type,status:"REVOKED"});
+  }
+
+  if(p==="/admin/delete"&&m==="POST"){
+    const b=await body(req),r=await getAdminKey(db,raw(b,u));
+    if(!r)return err("INVALID_KEY","Key not found.",404);
+    await audit(db,"KEY_PERMANENTLY_DELETED",`type=${r.key_type}; status=${r.status}`);
+    const result=await db.prepare("DELETE FROM keys WHERE key_hash=?").bind(r.key_hash).run();
+    if(!result.meta?.changes)return err("DELETE_FAILED","Key was not deleted.",500);
+    return res({success:true,code:"KEY_PERMANENTLY_DELETED",message:"Key permanently deleted.",key_type:r.key_type});
   }
 
   if(p==="/admin/tasks"&&m==="GET"){

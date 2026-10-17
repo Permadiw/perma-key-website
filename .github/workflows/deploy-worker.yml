@@ -81,10 +81,27 @@ jobs:
         run: |
           set -euo pipefail
           URL="https://perma-key-api.herdiansyah0239.workers.dev/loader"
-          curl --fail --silent --show-error --max-time 20 "$URL" -o /tmp/perma-loader.lua
-          grep -q "VERIFY KEY & EXECUTE" /tmp/perma-loader.lua
-          grep -q "GET FREE KEY" /tmp/perma-loader.lua
-          echo "Loader endpoint passed: key UI and Free Key website button are present."
+          STATUS="000"
+          for attempt in 1 2 3 4 5; do
+            echo "Loader check attempt $attempt/5: $URL"
+            STATUS="$(curl --silent --show-error --connect-timeout 8 --max-time 20 --output /tmp/perma-loader.lua --write-out '%{http_code}' "$URL" 2>/tmp/perma-loader-curl-error.txt || true)"
+            echo "HTTP status: ${STATUS:-000}"
+            if [ "$STATUS" = "200" ] && grep -q "VERIFY KEY & EXECUTE" /tmp/perma-loader.lua && grep -q "GET FREE KEY" /tmp/perma-loader.lua; then
+              echo "Loader endpoint passed: key UI and Free Key website button are present."
+              exit 0
+            fi
+            if [ -s /tmp/perma-loader.lua ]; then
+              echo "Loader response preview:"
+              head -c 1000 /tmp/perma-loader.lua
+              echo
+            fi
+            if [ -s /tmp/perma-loader-curl-error.txt ]; then
+              cat /tmp/perma-loader-curl-error.txt
+            fi
+            if [ "$attempt" -lt 5 ]; then sleep 5; fi
+          done
+          echo "::error::Loader verification failed after 5 attempts (last HTTP status: ${STATUS:-000}). Check the response preview above and confirm the deployed Worker includes GET /loader."
+          exit 1
 
       - name: Verify execute endpoint rejects missing key
         shell: bash

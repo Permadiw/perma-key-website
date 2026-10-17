@@ -173,12 +173,12 @@ function render(){
 }
 async function beginTask(task,card,content,status,start){
  if(busy)return;
- const opened=window.open('about:blank','_blank');
+ const opened=task.url?window.open('about:blank','_blank'):null;
  try{
   const d=await post('/public/tasks/begin',{session_id:sessionId,task_id:task.id});
   const deadline=Number(d.deadline)*1000;
   saved.taskTimers={...(saved.taskTimers||{}),[task.id]:deadline};persist();
-  if(opened)opened.location.href=task.url;else status.textContent='Your browser blocked the new tab. Use the task link in the notice.';
+  if(task.url){if(opened)opened.location.href=task.url;else status.textContent='Your browser blocked the new tab. Use the task link in the notice.';}
   showTaskNotice(task,deadline,()=>completeTask(task,card,content,status,start));
  }catch(e){if(opened)opened.close();status.textContent=e.message;status.className='task-status error'}
 }
@@ -188,10 +188,10 @@ function showTaskNotice(task,deadline,onCompletedClick){
  const previousOverflow=document.body.style.overflow;document.body.style.overflow='hidden';
  const panel=document.createElement('section');panel.className='task-notice';panel.setAttribute('role','dialog');panel.setAttribute('aria-modal','true');panel.setAttribute('aria-labelledby','taskNoticeHeading');
  const heading=document.createElement('h3');heading.id='taskNoticeHeading';heading.textContent='Task in Progress';
- const message=document.createElement('p');message.textContent='Please complete this task honestly before continuing.';
+ const message=document.createElement('p');message.textContent=task.url?'Please complete this task honestly before continuing.':'No external link is configured for this task. Follow the task instructions, then return here and confirm honestly.';
  const timer=document.createElement('div');timer.className='task-clock';
  const detail=document.createElement('p');detail.className='task-warning';detail.textContent='Only confirm if you have genuinely completed the task.';
- const link=document.createElement('a');link.href=task.url;link.target='_blank';link.rel='noopener noreferrer';link.textContent='Open Task Link';link.style.cssText='display:inline-block;margin:4px 0 8px;color:#6ee7ff;font-size:12px;font-weight:800';
+ const link=document.createElement('a');link.href=task.url||'#';link.target='_blank';link.rel='noopener noreferrer';link.textContent='Open Task Link';link.style.cssText='display:inline-block;margin:4px 0 8px;color:#6ee7ff;font-size:12px;font-weight:800';link.hidden=!task.url;
  const button=document.createElement('button');button.type='button';button.textContent='I Completed the Task';button.disabled=true;button.hidden=true;
  button.onclick=()=>{
   if(Date.now()<deadline){detail.textContent='The countdown is still running. Please complete the task genuinely and wait until the timer reaches zero.';return}
@@ -309,7 +309,7 @@ async function startSession(){
   TASKS=(Array.isArray(d.tasks)?d.tasks:[]).map(t=>({
    id:String(t.id||''),title:String(t.title||t.id||'Task'),
    desc:String(t.description||''),url:String(t.url||''),duration:Math.max(0,Number(t.duration_seconds)||0)
-  })).filter(t=>t.id&&t.url);
+  })).filter(t=>t.id);
   if(!TASKS.length)throw Error('No active tasks are configured. Please contact the site owner.');
   completed=new Set((Array.isArray(d.completed_tasks)?d.completed_tasks:[]).filter(id=>TASKS.some(t=>t.id===id)));
   humanVerified=false;

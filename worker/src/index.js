@@ -179,21 +179,8 @@ async function rate(req,db){
   return true;
 }
 
-async function handle(req,env){
-  if(req.method==="OPTIONS")return new Response(null,{status:204,headers:{...H,"Access-Control-Max-Age":"86400"}});
-  const u=new URL(req.url),p=u.pathname.replace(/\/+$/,"")||"/",m=req.method.toUpperCase();
-  // Keep health checks independent from D1 migrations so network/CORS and database failures can be distinguished.
-  if(p==="/health"&&m==="GET")return res({success:true,service:"PERMA KEY API",deployment:"route-fix-2026-10-17",status:"online",time:new Date().toISOString(),databaseConfigured:!!env.DB});
-  // Stable smoke-test response for requests that omit a key; this must work even if D1 is unavailable.
-  if(p==="/execute"&&m==="GET"&&!raw({},u))return new Response("PERMA_KEY_ERROR: Masukkan key terlebih dahulu.",{status:400,headers:{"Content-Type":"text/plain; charset=utf-8","Cache-Control":"no-store","Access-Control-Allow-Origin":"*"}});
-  // The loader UI is static Lua and must remain available even if D1 is temporarily unbound.
-  // All data-backed routes still require D1 and run the schema migration before use.
-  if(!env.DB && !(p==="/loader"&&m==="GET"))return err("CONFIG_ERROR","D1 binding DB is missing.",500);
-  const db=env.DB;
 
-  // Public executor bootstrap. Keep the actual Lua payload in the PERMA_LUA_SOURCE secret,
-  // never in this public repository.
-  if(p==="/loader"&&m==="GET"){
+function loaderResponse(){
     const bootstrap = String.raw`local API = "https://perma-key-api.herdiansyah0239.workers.dev"
 local HttpService = game:GetService("HttpService")
 local Players = game:GetService("Players")
@@ -400,7 +387,23 @@ if savedKey ~= "" then
   end)
 end`;
     return new Response(bootstrap,{status:200,headers:{"Content-Type":"text/plain; charset=utf-8","Cache-Control":"no-store","Access-Control-Allow-Origin":"*"}});
-  }
+}
+
+async function handle(req,env){
+  if(req.method==="OPTIONS")return new Response(null,{status:204,headers:{...H,"Access-Control-Max-Age":"86400"}});
+  const u=new URL(req.url),p=u.pathname.replace(/\/+$/,"")||"/",m=req.method.toUpperCase();
+  // Keep health checks independent from D1 migrations so network/CORS and database failures can be distinguished.
+  if(p==="/health"&&m==="GET")return res({success:true,service:"PERMA KEY API",deployment:"route-fix-2026-10-17",status:"online",time:new Date().toISOString(),databaseConfigured:!!env.DB});
+  // Stable smoke-test response for requests that omit a key; this must work even if D1 is unavailable.
+  if(p==="/execute"&&m==="GET"&&!raw({},u))return new Response("PERMA_KEY_ERROR: Masukkan key terlebih dahulu.",{status:400,headers:{"Content-Type":"text/plain; charset=utf-8","Cache-Control":"no-store","Access-Control-Allow-Origin":"*"}});
+  // The loader UI is static Lua and must remain available even if D1 is temporarily unbound.
+  // All data-backed routes still require D1 and run the schema migration before use.
+  if(!env.DB && !(p==="/loader"&&m==="GET"))return err("CONFIG_ERROR","D1 binding DB is missing.",500);
+  const db=env.DB;
+
+  // Public executor bootstrap. Keep the actual Lua payload in the PERMA_LUA_SOURCE secret,
+  // never in this public repository.
+  if(p==="/loader"&&m==="GET") return loaderResponse();
 
 
   if(db) await schema(db);
@@ -694,6 +697,7 @@ export default {
         }
       });
     }
+    if (request.method.toUpperCase() === "GET" && healthPath === "/loader") return loaderResponse();
     try{return await handle(request,env)}
     catch(e){
       console.error("PERMA KEY API error:",e?.message||e);

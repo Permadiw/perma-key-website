@@ -130,5 +130,5 @@ async function checkStoredKey(){
   if(d.key_type==='FREE'&&d.status==='ACTIVE'&&d.expires_at)showKey(saved.key,Number(d.expires_at)*1000);
  }catch(e){}
 }
-render();startSession();checkStoredKey();setInterval(checkStoredKey,30000);
+render();if(saved.key)showKey(saved.key,Number(saved.keyExpiresAt)>0?Number(saved.keyExpiresAt):null);startSession();checkStoredKey();setInterval(checkStoredKey,30000);
 </script></body></html>

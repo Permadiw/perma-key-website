@@ -62,6 +62,22 @@ jobs:
           ADMIN_TOKEN: ${{ secrets.ADMIN_TOKEN }}
         run: printf "%s" "$ADMIN_TOKEN" | wrangler secret put ADMIN_TOKEN
 
+      - name: Verify API root is not serving the website HTML
+        shell: bash
+        run: |
+          set -euo pipefail
+          URL="https://perma-key-api.herdiansyah0239.workers.dev/"
+          STATUS="$(curl --silent --show-error --connect-timeout 8 --max-time 15 --output /tmp/perma-root.json --write-out '%{http_code}' "$URL")"
+          echo "Root HTTP status: $STATUS"
+          echo "Root response preview:"
+          head -c 1000 /tmp/perma-root.json
+          echo
+          if [ "$STATUS" != "200" ]; then
+            echo "::error::API root must return HTTP 200."
+            exit 1
+          fi
+          node -e 'const fs=require("fs");const d=JSON.parse(fs.readFileSync("/tmp/perma-root.json","utf8"));if(d.success!==true||d.service!=="PERMA KEY API"||d.deployment!=="repair-deploy-2026-10-17-v2"||d.status!=="online"){console.error("Root returned unexpected content; expected the active PERMA KEY API build, not the website HTML.");process.exit(1)}console.log("API root build identity passed.")'
+
       - name: Verify deployed Worker health endpoint
         shell: bash
         run: |

@@ -66,7 +66,7 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          URL="https://perma-key-api.herdiansyah0239.workers.dev/"
+          URL="https://perma-key-api-v2.herdiansyah0239.workers.dev/"
           STATUS="$(curl --silent --show-error --connect-timeout 8 --max-time 15 --output /tmp/perma-root.json --write-out '%{http_code}' "$URL")"
           echo "Root HTTP status: $STATUS"
           echo "Root response preview:"
@@ -82,7 +82,7 @@ jobs:
         shell: bash
         run: |
           set -u
-          URL="https://perma-key-api.herdiansyah0239.workers.dev/health"
+          URL="https://perma-key-api-v2.herdiansyah0239.workers.dev/health"
           for attempt in $(seq 1 12); do
             echo "Health check attempt $attempt/12: $URL"
             STATUS="$(curl --silent --show-error --connect-timeout 8 --max-time 15 --output /tmp/perma-health.json --write-out '%{http_code}' "$URL" 2>/tmp/perma-curl-error.txt || true)"
@@ -108,7 +108,7 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          URL="https://perma-key-api.herdiansyah0239.workers.dev/public/tasks/start"
+          URL="https://perma-key-api-v2.herdiansyah0239.workers.dev/public/tasks/start"
           echo "Checking preflight response..."
           OPTIONS_STATUS="$(curl --silent --show-error --connect-timeout 8 --max-time 15 --output /tmp/perma-options.txt --write-out '%{http_code}' -X OPTIONS "$URL" -H "Origin: https://permafreekey.pages.dev" -H "Access-Control-Request-Method: POST" -H "Access-Control-Request-Headers: content-type" || true)"
           echo "OPTIONS HTTP status: $OPTIONS_STATUS"
@@ -132,7 +132,7 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          URL="https://perma-key-api.herdiansyah0239.workers.dev/loader"
+          URL="https://perma-key-api-v2.herdiansyah0239.workers.dev/loader"
           STATUS="000"
           for attempt in 1 2 3 4 5; do
             echo "Loader check attempt $attempt/5: $URL"
@@ -159,7 +159,7 @@ jobs:
         shell: bash
         run: |
           set -u
-          URL="https://perma-key-api.herdiansyah0239.workers.dev/execute?key=PERMA-CI-INVALID-KEY"
+          URL="https://perma-key-api-v2.herdiansyah0239.workers.dev/execute?key=PERMA-CI-INVALID-KEY"
           for attempt in 1 2 3 4 5; do
             echo "Invalid-key execute check attempt $attempt/5: $URL"
             STATUS="$(curl --silent --show-error --connect-timeout 8 --max-time 20 --output /tmp/perma-script-response.txt --write-out '%{http_code}' "$URL" 2>/tmp/perma-execute-curl-error.txt || true)"

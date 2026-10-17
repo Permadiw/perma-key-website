@@ -18,6 +18,46 @@
 @keyframes rewardPop{0%{opacity:0;transform:scale(.3) rotate(-20deg)}70%{transform:scale(1.12) rotate(5deg)}100%{opacity:1;transform:scale(1) rotate(0)}}
 @keyframes confettiFall{to{transform:translate3d(var(--drift),110vh,0) rotate(740deg);opacity:.05}}
 @keyframes flow{0%{background-position:0% 50%}50%{background-position:100% 50%}100%{background-position:0% 50%}}@keyframes glow{0%,100%{box-shadow:0 15px 45px #0004}50%{box-shadow:0 15px 48px #187ce42b}}@media(prefers-reduced-motion:reduce){*,*::before,*::after{animation:none!important;transition:none!important}}
+
+/* PERMA premium visual polish */
+:root{--line:#294565;--text:#f5f9ff;--muted:#b3c5dc;--cyan:#65e8ff;--green:#61efba}
+html{scroll-behavior:smooth}
+body{position:relative;isolation:isolate;overflow-x:hidden;background:radial-gradient(ellipse at 12% 4%,#123c66 0,transparent 38%),radial-gradient(ellipse at 92% 35%,#18295a 0,transparent 35%),linear-gradient(145deg,#070b14,#0b1424 52%,#070d18);padding:clamp(14px,3vw,28px)}
+body:before,body:after{content:"";position:fixed;z-index:-1;pointer-events:none;width:42vw;height:42vw;min-width:300px;min-height:300px;border-radius:50%;filter:blur(90px);opacity:.17;animation:permaAurora 18s ease-in-out infinite alternate}
+body:before{top:-18vw;left:-12vw;background:linear-gradient(135deg,#20d9f2,#276bff)}
+body:after{right:-14vw;bottom:-18vw;background:linear-gradient(135deg,#7a54ff,#16d8b4);animation-delay:-8s}
+.wrap{position:relative;animation:permaRise .65s cubic-bezier(.2,.7,.2,1) both}
+.brandline{gap:14px;letter-spacing:2.5px;font-size:13px;text-shadow:0 0 25px #56dfff22}
+.brandline img{width:48px;height:48px;border-radius:15px;padding:4px;box-shadow:0 0 26px #42d7ff22;border-color:#4779a4}
+.card{position:relative;overflow:hidden;border-color:#2b4b6c;background:linear-gradient(145deg,#111e32f5,#0b1424f7 70%);box-shadow:0 28px 80px #0007, inset 0 1px #ffffff08;backdrop-filter:blur(18px);-webkit-backdrop-filter:blur(18px);animation:permaCardGlow 7s ease-in-out infinite}
+.card:before{content:"";position:absolute;left:10%;right:10%;top:0;height:1px;background:linear-gradient(90deg,transparent,#64eaff,#9c9dff,transparent);background-size:200% 100%;animation:permaShimmer 5s linear infinite;pointer-events:none}
+h1{letter-spacing:-1.6px;text-shadow:0 0 34px #39d8ef12}
+.intro{font-size:15px;line-height:1.8;color:#b9cbe1}
+.eyebrow{display:inline-flex;align-items:center;gap:8px;padding:7px 10px;border:1px solid #294e70;border-radius:999px;background:#0d2036;color:#8beaff;letter-spacing:1.5px}
+.notice{border-color:#294967!important;background:linear-gradient(110deg,#11263cdd,#101a2bdd)!important;color:#d1e1f3}
+.progress-head{color:#d4e7fb;letter-spacing:1.2px}
+.track{height:9px!important;border:1px solid #263e5b;background:#080f1c!important;border-radius:999px!important;overflow:hidden}
+.fill{border-radius:999px!important;background:linear-gradient(90deg,#278bff,#35e0ed,#8d8cff,#278bff)!important;background-size:250% 100%!important;animation:permaShimmer 4s linear infinite}
+button,.discord-join{transition:transform .2s ease,filter .2s ease,box-shadow .2s ease!important}
+button:hover,.discord-join:hover{transform:translateY(-2px);filter:brightness(1.12);box-shadow:0 10px 28px #168fff25}
+button:active,.discord-join:active{transform:translateY(0) scale(.99)}
+.mainbtn{min-height:49px;border:1px solid #70e7ff!important;background:linear-gradient(100deg,#176be8,#0caecb,#5c8cff,#176be8)!important;background-size:260% 100%!important;animation:permaShimmer 7s linear infinite,permaButtonGlow 4s ease-in-out infinite!important;letter-spacing:.4px}
+.mainbtn:disabled{filter:saturate(.45);opacity:.72}
+input,textarea,select{border-color:#2a4563!important;background:#080f1c!important;color:#f4f9ff!important;transition:border-color .2s,box-shadow .2s}
+input:focus,textarea:focus,select:focus{outline:none;border-color:#4bdff5!important;box-shadow:0 0 0 3px #3ddaf51a,0 0 22px #3ddaf510}
+.out{border-color:#287d83!important;background:linear-gradient(145deg,#0e282d,#101e2b)!important;box-shadow:0 0 34px #37e7b00c}
+.key-value{border:1px solid #326b83;border-radius:12px;background:#07121f;padding:15px;color:#f4fcff;overflow-wrap:anywhere;box-shadow:inset 0 0 24px #3ddaf509}
+.countdown{font-variant-numeric:tabular-nums;letter-spacing:1px;color:#a8f6ff!important;text-shadow:0 0 22px #35dffb28}
+.foot{color:#91a7c2}
+.reward-card{border-color:#70eaff;box-shadow:0 0 90px #18bfff35,0 25px 80px #0008}
+@keyframes permaAurora{0%{transform:translate3d(0,0,0) scale(1)}100%{transform:translate3d(7vw,5vh,0) scale(1.18)}}
+@keyframes permaRise{from{opacity:0;transform:translateY(14px)}to{opacity:1;transform:translateY(0)}}
+@keyframes permaCardGlow{0%,100%{box-shadow:0 28px 80px #0007,inset 0 1px #ffffff08}50%{box-shadow:0 28px 80px #0007,0 0 34px #28cde90b,inset 0 1px #ffffff08}}
+@keyframes permaShimmer{0%{background-position:0% 50%}100%{background-position:250% 50%}}
+@keyframes permaButtonGlow{0%,100%{box-shadow:0 8px 26px #158bff24}50%{box-shadow:0 8px 32px #36dcf53b}}
+@media(max-width:520px){body{padding:14px}.brandline img{width:42px;height:42px}.card{border-radius:18px}.intro{font-size:14px}}
+@media(prefers-reduced-motion:reduce){body:before,body:after,.wrap,.card:before{animation:none!important}}
+
 </style>
 </head>
 <body><main class="wrap">

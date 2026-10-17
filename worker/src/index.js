@@ -98,8 +98,10 @@ async function schema(db){
   await ensureColumn(db,"tasks","sort_order","INTEGER NOT NULL DEFAULT 0");
   await ensureColumn(db,"tasks","created_at","TEXT NOT NULL DEFAULT ''");
 
-  for(const t of TASKS) await db.prepare(`INSERT OR IGNORE INTO tasks
-    (id,title,description,url,duration_seconds,active,created_at) VALUES(?,?,?,?,?,1,?)`)
+  for(const t of TASKS) await db.prepare(`INSERT INTO tasks
+    (id,title,description,url,duration_seconds,active,created_at) VALUES(?,?,?,?,?,1,?)
+    ON CONFLICT(id) DO UPDATE SET title=excluded.title,description=excluded.description,url=excluded.url,
+    duration_seconds=excluded.duration_seconds,active=1`)
     .bind(...t,new Date().toISOString()).run();
 }
 async function audit(db,type,detail=""){

@@ -185,11 +185,18 @@ async function handle(req,env){
   }
 
   if(p==="/public/tasks/start"&&m==="POST"){
+    const b=await body(req),existingId=str(b.session_id,100);
+    if(existingId){
+      const existing=await db.prepare("SELECT * FROM free_task_sessions WHERE session_id=?").bind(existingId).first();
+      if(existing&&now()-Number(existing.created_at)<=7200){
+        return res({success:true,session_id:existingId,completed_tasks:JSON.parse(existing.completed_json||"[]"),tasks:TASKS.map(x=>({id:x[0],title:x[1],description:x[2]}))});
+      }
+    }
     const ip=await hash(req.headers.get("CF-Connecting-IP")||"unknown");
     const sid=crypto.randomUUID(),t=now();
     await db.prepare("INSERT INTO free_task_sessions(session_id,completed_json,created_at,updated_at,ip_hash) VALUES(?,'[]',?,?,?)")
       .bind(sid,t,t,ip).run();
-    return res({success:true,session_id:sid,tasks:TASKS.map(x=>({id:x[0],title:x[1],description:x[2]}))});
+    return res({success:true,session_id:sid,completed_tasks:[],tasks:TASKS.map(x=>({id:x[0],title:x[1],description:x[2]}))});
   }
 
   if(p==="/public/tasks/begin"&&m==="POST"){

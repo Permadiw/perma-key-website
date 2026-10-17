@@ -103,14 +103,16 @@ jobs:
           echo "::error::Loader verification failed after 5 attempts (last HTTP status: ${STATUS:-000}). Check the response preview above and confirm the deployed Worker includes GET /loader."
           exit 1
 
-      - name: Verify execute endpoint rejects missing key
+      - name: Verify execute endpoint rejects an invalid key
         shell: bash
         run: |
           set -euo pipefail
-          URL="https://perma-key-api.herdiansyah0239.workers.dev/execute"
-          STATUS="$(curl --silent --show-error --max-time 20 --output /tmp/perma-script-response.txt --write-out '%{http_code}' "$URL")"
-          echo "No-key execute endpoint HTTP status: $STATUS"
+          URL="https://perma-key-api.herdiansyah0239.workers.dev/execute?key=PERMA-CI-INVALID-KEY"
+          STATUS="$(curl --silent --show-error --connect-timeout 8 --max-time 20 --output /tmp/perma-script-response.txt --write-out '%{http_code}' "$URL")"
+          echo "Invalid-key execute endpoint HTTP status: $STATUS"
           cat /tmp/perma-script-response.txt
-          test "$STATUS" = "400"
+          # A routed execute endpoint must reject the deliberately invalid key with 403.
+          # HTTP 404 indicates a routing/deployment problem and must still fail this check.
+          test "$STATUS" = "403"
           grep -q "PERMA_KEY_ERROR" /tmp/perma-script-response.txt
-          echo "Execute endpoint correctly rejects requests without a key."
+          echo "Execute endpoint is routed correctly and rejects an invalid key."

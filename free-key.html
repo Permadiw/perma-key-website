@@ -30,13 +30,7 @@
 const API='https://perma-key-api.herdiansyah0239.workers.dev';
 const STORAGE_KEY='perma_free_key_internal_tasks_v1';
 const KEY_LIFETIME_MS=6*60*60*1000;
-const TASKS=[
-{id:'subscribe_channel',title:'SUBSCRIBE TO THE PERMA DIW STUDIO YOUTUBE CHANNEL',desc:'Open the official channel and subscribe if you choose to. Return and confirm honestly; this website cannot independently verify a subscription without YouTube account authorization.',url:'https://www.youtube.com/channel/UCiSTRqsRTp0Lem3_qxYQIwA',duration:30},
-{id:'like_video',title:'LIKE A PERMA DIW STUDIO YOUTUBE VIDEO',desc:'Open a video published by PERMA DIW STUDIO and like it if you choose to. Return and confirm honestly; a timer cannot prove a like.',url:'https://www.youtube.com/channel/UCiSTRqsRTp0Lem3_qxYQIwA/videos',duration:30},
-{id:'comment_video',title:'COMMENT ON A PERMA DIW STUDIO YOUTUBE VIDEO',desc:'Leave a relevant, non-spam comment on a PERMA DIW STUDIO video if you choose to, then return and confirm honestly. This site does not automatically verify comments.',url:'https://www.youtube.com/channel/UCiSTRqsRTp0Lem3_qxYQIwA/videos',duration:30},
-{id:'watch_video',title:'WATCH A PERMA DIW STUDIO YOUTUBE VIDEO FOR AT LEAST 1 MINUTE',desc:'Open a PERMA DIW STUDIO video, watch for at least one minute, then return here.',url:'https://www.youtube.com/channel/UCiSTRqsRTp0Lem3_qxYQIwA/videos',duration:60},
-{id:'discord_join',title:'JOIN THE PERMA DIW STUDIO DISCORD',desc:'Open the official invite, join the server, then return here.',url:'https://discord.gg/PvKTnGnJs',duration:30}
-];
+let TASKS=[];
 const TURNSTILE_SITE_KEY='0x4AAAAAAFZGQ4AtU1ySVLDH';
 let sessionId=null,completed=new Set(),busy=false,keyCountdownTimer=null,taskTimerInterval=null,currentTaskNotice=null,turnstileToken="",sessionStartPending=false,humanVerified=false,turnstileWidgetId=null,verifyBusy=false;
 let saved={};try{saved=JSON.parse(localStorage.getItem(STORAGE_KEY)||'{}')||{}}catch{}
@@ -129,7 +123,7 @@ function showTaskNotice(task,deadline,onCompletedClick){
  let finished=false;
  const tick=()=>{
   const left=Math.max(0,Math.ceil((deadline-Date.now())/1000));
-  timer.textContent='00:'+String(Math.floor(left/60)).padStart(2,'0')+':'+String(left%60).padStart(2,'0');
+  const minutes=Math.floor(left/60);timer.textContent=String(Math.floor(minutes/60)).padStart(2,'0')+':'+String(minutes%60).padStart(2,'0')+':'+String(left%60).padStart(2,'0');
   if(left<=0&&!finished){finished=true;clearInterval(taskTimerInterval);taskTimerInterval=null;button.hidden=false;button.disabled=false;detail.textContent='The timer has ended. Only click “I Completed the Task” after you have genuinely completed this task.'}
  };
  tick();if(!finished)taskTimerInterval=setInterval(tick,250);
@@ -206,7 +200,12 @@ async function startSession(){
  try{
   const d=await post('/public/tasks/start',{session_id:saved.sessionId||sessionId||''});
   sessionId=d.session_id;
-  completed=new Set(Array.isArray(d.completed_tasks)?d.completed_tasks:[]);
+  TASKS=(Array.isArray(d.tasks)?d.tasks:[]).map(t=>({
+   id:String(t.id||''),title:String(t.title||t.id||'Task'),
+   desc:String(t.description||''),url:String(t.url||''),duration:Math.max(0,Number(t.duration_seconds)||0)
+  })).filter(t=>t.id&&t.url);
+  if(!TASKS.length)throw Error('No active tasks are configured. Please contact the site owner.');
+  completed=new Set((Array.isArray(d.completed_tasks)?d.completed_tasks:[]).filter(id=>TASKS.some(t=>t.id===id)));
   humanVerified=false;
   persist();render();restoreTaskTimer();
  }catch(e){
@@ -232,6 +231,6 @@ async function checkStoredKey(){
   if(d.key_type==='FREE'&&d.status==='ACTIVE'&&d.expires_at){saved.keyExpiresAt=Number(d.expires_at)*1000;persist();showKey(saved.key,Number(d.expires_at)*1000)}
  }catch(e){}
 }
-render();startSession();if(saved.key)showKey(saved.key,Number(saved.keyExpiresAt)>0?Number(saved.keyExpiresAt):null);
+startSession();if(saved.key)showKey(saved.key,Number(saved.keyExpiresAt)>0?Number(saved.keyExpiresAt):null);
 checkStoredKey();setInterval(checkStoredKey,30000);
 </script></body></html>

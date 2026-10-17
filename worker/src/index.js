@@ -7,11 +7,29 @@ const H = {
 };
 const FREE = 21600, LIMIT = 5;
 const TASKS = [
-  ["subscribe","Subscribe to the channel","Visit the YouTube channel","https://www.youtube.com/channel/UCiSTRqsRTp0Lem3_qxYQIwA",15],
-  ["like","Like the video","Open and like the video","https://youtu.be/JcgUyeInJpw",15],
-  ["watch","Watch the video","Watch the designated video","https://youtu.be/JcgUyeInJpw",30],
-  ["comment","Leave a comment","Leave a relevant comment","https://youtu.be/JcgUyeInJpw",15]
+  ["read_rules","Read the Free Key rules","Review the Free Key rules and answer the short check question.","",10],
+  ["install_guide","Review the installation guide","Learn where to paste the key and how to validate it.","",10],
+  ["security_basics","Learn key security","Review the safety tips for protecting your key.","",10],
+  ["api_basics","Complete the knowledge check","Answer a question about how PERMA KEY works.","",10]
 ];
+const TASK_QUIZZES = {
+  read_rules: [
+    {q:"How long is a Free Key valid after its first activation?", options:["30 minutes","6 hours","7 days"], answer:"6 hours"},
+    {q:"When does the 6-hour validity period begin?", options:["When the key is first activated/validated","When this page opens","When a task starts"], answer:"When the key is first activated/validated"}
+  ],
+  install_guide: [
+    {q:"Where should you enter a key when a supported script asks for it?", options:["In the key field shown by the supported script","In a public chat","In the browser address bar"], answer:"In the key field shown by the supported script"},
+    {q:"What should you do if validation fails?", options:["Check the key and API status, then retry","Share the key publicly","Disable security checks"], answer:"Check the key and API status, then retry"}
+  ],
+  security_basics: [
+    {q:"What is the safest way to handle your key?", options:["Keep it private","Post it publicly","Send it to strangers"], answer:"Keep it private"},
+    {q:"What happens if an admin revokes a key?", options:["It should no longer validate","It becomes permanent","It changes into Premium"], answer:"It should no longer validate"}
+  ],
+  api_basics: [
+    {q:"Which system is authoritative for whether a key is valid?", options:["The PERMA KEY API","A browser timer","A localStorage value"], answer:"The PERMA KEY API"},
+    {q:"Can the website honestly prove a YouTube like without account authorization?", options:["No","Yes, from a timer alone","Yes, from clicking a button"], answer:"No"}
+  ]
+};
 
 function res(d,s=200){return new Response(JSON.stringify(d),{status:s,headers:H})}
 function err(c,m,s=400){return res({success:false,code:c,message:m},s)}
@@ -56,6 +74,12 @@ async function schema(db){
     id INTEGER PRIMARY KEY AUTOINCREMENT,session_id TEXT,task_id TEXT NOT NULL,action TEXT,
     created_at INTEGER NOT NULL,ip_hash TEXT,metadata TEXT,user_ref TEXT,proof TEXT,
     status TEXT NOT NULL DEFAULT 'PENDING',reviewed_at INTEGER,review_note TEXT
+  )`).run();
+  await db.prepare(`CREATE TABLE IF NOT EXISTS free_task_sessions(
+    session_id TEXT PRIMARY KEY,completed_json TEXT NOT NULL DEFAULT '[]',
+    challenge_task TEXT,challenge_answer TEXT,challenge_expires_at INTEGER,
+    created_at INTEGER NOT NULL,updated_at INTEGER NOT NULL,ip_hash TEXT,
+    issued_key_hash TEXT
   )`).run();
   await db.prepare(`CREATE TABLE IF NOT EXISTS rate_limits(
     id INTEGER PRIMARY KEY AUTOINCREMENT,ip_hash TEXT NOT NULL,created_at INTEGER NOT NULL
@@ -151,9 +175,61 @@ async function handle(req,env){
     return res({success:true,tasks:r.results||[]});
   }
 
+  if(p==="/public/tasks/start"&&m==="POST"){
+    const ip=await hash(req.headers.get("CF-Connecting-IP")||"unknown");
+    const sid=crypto.randomUUID(),t=now();
+    await db.prepare("INSERT INTO free_task_sessions(session_id,completed_json,created_at,updated_at,ip_hash) VALUES(?,'[]',?,?,?)")
+      .bind(sid,t,t,ip).run();
+    return res({success:true,session_id:sid,tasks:TASKS.map(x=>({id:x[0],title:x[1],description:x[2]}))});
+  }
+
+  if(p==="/public/tasks/challenge"&&m==="POST"){
+    const b=await body(req),sid=str(b.session_id,100),taskId=str(b.task_id,100);
+    if(!sid||!TASKS.some(x=>x[0]===taskId))return err("INVALID_TASK","A valid session_id and task_id are required.");
+    const session=await db.prepare("SELECT * FROM free_task_sessions WHERE session_id=?").bind(sid).first();
+    if(!session||now()-Number(session.created_at)>7200)return err("SESSION_EXPIRED","Start the task flow again.",410);
+    const completed=JSON.parse(session.completed_json||"[]");
+    const index=TASKS.findIndex(x=>x[0]===taskId);
+    if(index>0&&!completed.includes(TASKS[index-1][0]))return err("TASK_LOCKED","Complete the previous task first.",409);
+    if(completed.includes(taskId))return res({success:true,completed:true,task_id:taskId});
+    const quizList=TASK_QUIZZES[taskId],quiz=quizList[Math.floor(Math.random()*quizList.length)];
+    const challengeId=crypto.randomUUID();
+    await db.prepare("UPDATE free_task_sessions SET challenge_task=?,challenge_answer=?,challenge_expires_at=?,updated_at=? WHERE session_id=?")
+      .bind(taskId,quiz.answer,now()+600,now(),sid).run();
+    return res({success:true,challenge_id:challengeId,task_id:taskId,question:quiz.q,options:quiz.options,expires_in:600});
+  }
+
+  if(p==="/public/tasks/complete"&&m==="POST"){
+    const b=await body(req),sid=str(b.session_id,100),taskId=str(b.task_id,100),answer=str(b.answer,500);
+    if(!sid||!taskId||!answer)return err("FIELDS_REQUIRED","session_id, task_id and answer are required.");
+    const session=await db.prepare("SELECT * FROM free_task_sessions WHERE session_id=?").bind(sid).first();
+    if(!session||now()-Number(session.created_at)>7200)return err("SESSION_EXPIRED","Start the task flow again.",410);
+    if(session.challenge_task!==taskId||Number(session.challenge_expires_at||0)<now())return err("CHALLENGE_EXPIRED","Request a new question and try again.",410);
+    if(answer!==session.challenge_answer){
+      await db.prepare("UPDATE free_task_sessions SET challenge_task=NULL,challenge_answer=NULL,challenge_expires_at=NULL,updated_at=? WHERE session_id=?").bind(now(),sid).run();
+      return err("ANSWER_INCORRECT","That answer is not correct. Try the question again.",422);
+    }
+    const completed=JSON.parse(session.completed_json||"[]");
+    if(!completed.includes(taskId))completed.push(taskId);
+    await db.prepare("UPDATE free_task_sessions SET completed_json=?,challenge_task=NULL,challenge_answer=NULL,challenge_expires_at=NULL,updated_at=? WHERE session_id=?")
+      .bind(JSON.stringify(completed),now(),sid).run();
+    await audit(db,"FREE_TASK_COMPLETED",taskId);
+    return res({success:true,completed:true,task_id:taskId,completed_tasks:completed,all_complete:TASKS.every(x=>completed.includes(x[0]))});
+  }
+
   if(p==="/public/get-key"&&m==="POST"){
     if(!await rate(req,db))return err("RATE_LIMITED","Free Key limit reached. Try again later.",429);
-    return res({success:true,code:"KEY_CREATED",message:"Free Key created. Six hours start at first validation.",...await create(db,"FREE","Public Free Key",false)});
+    const b=await body(req),sid=str(b.session_id,100);
+    if(!sid)return err("TASKS_REQUIRED","Complete the website tasks before requesting a key.",403);
+    const session=await db.prepare("SELECT * FROM free_task_sessions WHERE session_id=?").bind(sid).first();
+    if(!session||now()-Number(session.created_at)>7200)return err("SESSION_EXPIRED","Start the task flow again.",410);
+    const completed=JSON.parse(session.completed_json||"[]");
+    if(!TASKS.every(x=>completed.includes(x[0])))return err("TASKS_INCOMPLETE","Complete all server-checked website tasks first.",403);
+    if(session.issued_key_hash)return err("KEY_ALREADY_ISSUED","This task session has already received a key.",409);
+    const issued=await create(db,"FREE","Website tasks completed",false);
+    await db.prepare("UPDATE free_task_sessions SET issued_key_hash=?,updated_at=? WHERE session_id=? AND issued_key_hash IS NULL")
+      .bind(await hash(issued.key),now(),sid).run();
+    return res({success:true,code:"KEY_CREATED",message:"Free Key created. Six hours start at first validation.",...issued});
   }
 
   // Read-only status check for a previously issued key. Does not activate UNUSED keys.

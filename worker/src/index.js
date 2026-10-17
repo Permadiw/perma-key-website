@@ -237,7 +237,9 @@ for i = 1, 5 do
   task.wait(1)
 end
 splash:Destroy()
-local frame = Instance.new("Frame", gui)
+local fadeGroup = Instance.new("CanvasGroup", gui)
+fadeGroup.Name = "PermaFadeGroup"; fadeGroup.GroupTransparency = 1
+local frame = Instance.new("Frame", fadeGroup)
 frame.Size = UDim2.fromOffset(340, 290)
 frame.Position = UDim2.new(0.5, -170, 0.5, -145)
 frame.BackgroundColor3 = Color3.fromRGB(10, 17, 31)
@@ -281,6 +283,12 @@ getFree.Size = UDim2.new(1, -28, 0, 30); getFree.Position = UDim2.fromOffset(14,
 getFree.BackgroundColor3 = Color3.fromRGB(28, 105, 72); getFree.TextColor3 = Color3.new(1,1,1)
 getFree.Text = "GET FREE KEY — OPEN WEBSITE"; getFree.Font = Enum.Font.GothamBold; getFree.TextSize = 11
 local gfc = Instance.new("UICorner", getFree); gfc.CornerRadius = UDim.new(0, 7)
+local function fadeClose(callback)
+  local tw = game:GetService("TweenService"):Create(fadeGroup, TweenInfo.new(0.28, Enum.EasingStyle.Quad, Enum.EasingDirection.In), {GroupTransparency=1})
+  tw:Play(); tw.Completed:Connect(function() if callback then callback() end end)
+end
+local fadeOpen = game:GetService("TweenService"):Create(fadeGroup, TweenInfo.new(0.38, Enum.EasingStyle.Quint, Enum.EasingDirection.Out), {GroupTransparency=0})
+fadeOpen:Play()
 getFree.Activated:Connect(function()
   local url = "https://permafreekey.pages.dev/"
   local opened = pcall(function() game:GetService("GuiService"):OpenBrowserWindow(url) end)
@@ -327,7 +335,8 @@ button.Activated:Connect(function()
       status.Text = "Script gagal dimuat / response tidak valid."
       button.Text = "VERIFY KEY & EXECUTE"; busy = false; return
     end
-    gui:Destroy()
+    fadeClose(function() gui:Destroy() end)
+    task.wait(0.30)
     local ran, failure = pcall(chunk)
     if not ran then warn("[PERMA KEY] Script error: " .. tostring(failure)); notify("Script mengalami error. Periksa console.") end
   end)

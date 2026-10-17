@@ -76,7 +76,7 @@ jobs:
             echo "::error::API root must return HTTP 200."
             exit 1
           fi
-          node -e 'const fs=require("fs");const d=JSON.parse(fs.readFileSync("/tmp/perma-root.json","utf8"));if(d.success!==true||d.service!=="PERMA KEY API"||d.deployment!=="repair-deploy-2026-10-17-v2"||d.status!=="online"){console.error("Root returned unexpected content; expected the active PERMA KEY API build, not the website HTML.");process.exit(1)}console.log("API root build identity passed.")'
+          node -e 'const fs=require("fs");const d=JSON.parse(fs.readFileSync("/tmp/perma-root.json","utf8"));if(d.success!==true||d.service!=="PERMA KEY API"||d.deployment!=="repair-deploy-2026-10-17-v3"||d.status!=="online"){console.error("Root returned unexpected content; expected the active PERMA KEY API build, not the website HTML.");process.exit(1)}console.log("API root build identity passed.")'
 
       - name: Verify deployed Worker health endpoint
         shell: bash

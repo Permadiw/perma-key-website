@@ -6,7 +6,6 @@ on:
       - main
     paths:
       - "worker/**"
-      - ".github/workflows/deploy-worker.yml"
   workflow_dispatch:
 
 permissions:

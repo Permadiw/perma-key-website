@@ -156,8 +156,8 @@ function renderAfterChallenge(taskId){
 }
 async function startSession(){
  try{
-  const d=await post('/public/tasks/start',{});
-  sessionId=d.session_id;completed=new Set();persist();render();restoreTaskTimer();
+  const d=await post('/public/tasks/start',{session_id:saved.sessionId||sessionId||''});
+  sessionId=d.session_id;completed=new Set(Array.isArray(d.completed_tasks)?d.completed_tasks:[]);persist();render();restoreTaskTimer();
  }catch(e){list.replaceChildren();const n=document.createElement('div');n.className='notice error';n.textContent='Unable to connect to PERMA KEY: '+e.message+'. Refresh this page to retry.';list.append(n)}
 }
 getBtn.addEventListener('click',async()=>{

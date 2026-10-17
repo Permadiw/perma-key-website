@@ -86,6 +86,13 @@ async function getKey(db,key){
   key=norm(key);if(!key)return null;
   return db.prepare("SELECT * FROM keys WHERE key_hash=?").bind(await hash(key)).first();
 }
+// Admin endpoints may receive the stored SHA-256 hash from the key table.
+// This helper is only used after the caller has passed admin authorization.
+async function getAdminKey(db,key){
+  key=norm(key);if(!key)return null;
+  const byHash=await db.prepare("SELECT * FROM keys WHERE key_hash=?").bind(key.toLowerCase()).first();
+  return byHash || getKey(db,key);
+}
 async function create(db,type,note="",activeFree=false){
   type=str(type).toUpperCase();
   if(!["FREE","PREMIUM"].includes(type))throw Error("TYPE_MUST_BE_FREE_OR_PREMIUM");
@@ -146,7 +153,7 @@ async function handle(req,env){
 
   if(p==="/public/get-key"&&m==="POST"){
     if(!await rate(req,db))return err("RATE_LIMITED","Free Key limit reached. Try again later.",429);
-    return res({success:true,code:"KEY_CREATED",message:"Free Key created. Six hours start at first validation.",...await create(db,"FREE","Public Free Key")});
+    return res({success:true,code:"KEY_CREATED",message:"Free Key created. Six hours start at first validation.",...await create(db,"FREE","Public Free Key",false)});
   }
 
   if(p==="/validate"&&(m==="GET"||m==="POST")){
@@ -187,11 +194,11 @@ async function handle(req,env){
   if(p==="/admin/create"&&m==="POST"){
     const b=await body(req),type=str(b.type||b.key_type||"FREE").toUpperCase();
     if(!["FREE","PREMIUM"].includes(type))return err("INVALID_TYPE","type must be FREE or PREMIUM.");
-    return res({success:true,code:"KEY_CREATED",message:`${type} key created.`,...await create(db,type,b.note||"",type==="FREE")});
+    return res({success:true,code:"KEY_CREATED",message:`${type} key created.`,...await create(db,type,b.note||"",false)});
   }
 
   if(p==="/admin/activate"&&m==="POST"){
-    const b=await body(req),r=await getKey(db,raw(b,u));
+    const b=await body(req),r=await getAdminKey(db,raw(b,u));
     if(!r)return err("INVALID_KEY","Key not found.",404);
     if(r.status==="REVOKED")return err("REVOKED","Revoked keys cannot be activated.",409);
     const t=now(),expiry=r.key_type==="FREE"?t+FREE:null;
@@ -201,7 +208,7 @@ async function handle(req,env){
   }
 
   if(p==="/admin/revoke"&&m==="POST"){
-    const b=await body(req),r=await getKey(db,raw(b,u));
+    const b=await body(req),r=await getAdminKey(db,raw(b,u));
     if(!r)return err("INVALID_KEY","Key not found.",404);
     await db.prepare("UPDATE keys SET status='REVOKED' WHERE key_hash=?").bind(r.key_hash).run();
     await audit(db,"KEY_REVOKED",r.key_type);

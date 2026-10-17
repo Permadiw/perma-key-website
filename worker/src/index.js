@@ -338,15 +338,6 @@ getFree.Activated:Connect(function()
     status.Text = "Website Free Key dibuka."
   end
 end)
-if savedKey ~= "" then
-  status.Text = "Saved key found. Verifying automatically..."
-  button.Text = "AUTO VERIFYING..."
-  task.defer(function()
-    if button and button.Parent and gui and gui.Parent then
-      pcall(function() button:Activate() end)
-    end
-  end)
-end
 local busy = false
 button.Activated:Connect(function()
   if busy then return end
@@ -398,7 +389,16 @@ button.Activated:Connect(function()
     local ran, failure = pcall(chunk)
     if not ran then warn("[PERMA KEY] Script error: " .. tostring(failure)); notify("Script mengalami error. Periksa console.") end
   end)
-end)`;
+end)
+if savedKey ~= "" then
+  status.Text = "Saved key found. Verifying automatically..."
+  button.Text = "AUTO VERIFYING..."
+  task.defer(function()
+    if button and button.Parent and gui and gui.Parent then
+      pcall(function() button:Activate() end)
+    end
+  end)
+end`;
     return new Response(bootstrap,{status:200,headers:{"Content-Type":"text/plain; charset=utf-8","Cache-Control":"no-store","Access-Control-Allow-Origin":"*"}});
   }
 

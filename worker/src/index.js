@@ -190,8 +190,6 @@ async function handle(req,env){
   // All data-backed routes still require D1 and run the schema migration before use.
   if(!env.DB && !(p==="/loader"&&m==="GET"))return err("CONFIG_ERROR","D1 binding DB is missing.",500);
   const db=env.DB;
-  if(db) await schema(db);
-
 
   // Public executor bootstrap. Keep the actual Lua payload in the PERMA_LUA_SOURCE secret,
   // never in this public repository.
@@ -403,6 +401,11 @@ if savedKey ~= "" then
 end`;
     return new Response(bootstrap,{status:200,headers:{"Content-Type":"text/plain; charset=utf-8","Cache-Control":"no-store","Access-Control-Allow-Origin":"*"}});
   }
+
+
+  if(db) await schema(db);
+
+
 
   if(p==="/execute"&&m==="GET"){
     const key = raw({},u);

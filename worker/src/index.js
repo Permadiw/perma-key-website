@@ -128,7 +128,7 @@ async function create(db,type,note="",activeFree=false){
   type=str(type).toUpperCase();
   if(!["FREE","PREMIUM"].includes(type))throw Error("TYPE_MUST_BE_FREE_OR_PREMIUM");
   const key=gen(type),h=await hash(key),t=now();
-  const status=type==="FREE"&&activeFree?"ACTIVE":"UNUSED";
+  const status=(type==="PREMIUM"||(type==="FREE"&&activeFree))?"ACTIVE":"UNUSED";
   const activated=status==="ACTIVE"?t:null;
   const expiry=status==="ACTIVE"&&type==="FREE"?t+FREE:null;
   await db.prepare(`INSERT INTO keys(key_hash,key_type,status,created_at,activated_at,expires_at,note)
@@ -261,10 +261,10 @@ async function handle(req,env){
     if(!TASKS.every(x=>completed.includes(x[0])))return err("TASKS_INCOMPLETE","Complete all server-checked website tasks first.",403);
     if(!Number(session.human_verified_at)||now()-Number(session.human_verified_at)>600)return err("HUMAN_VERIFICATION_REQUIRED","Please verify that you are human before requesting a key.",403);
     if(session.issued_key_hash)return err("KEY_ALREADY_ISSUED","This task session has already received a key.",409);
-    const issued=await create(db,"FREE","Website tasks completed",false);
+    const issued=await create(db,"FREE","Website tasks completed",true);
     await db.prepare("UPDATE free_task_sessions SET issued_key_hash=?,updated_at=? WHERE session_id=? AND issued_key_hash IS NULL")
       .bind(await hash(issued.key),now(),sid).run();
-    return res({success:true,code:"KEY_CREATED",message:"Free Key created. Six hours start at first validation.",...issued});
+    return res({success:true,code:"KEY_CREATED",message:"Free Key activated immediately. Six-hour validity starts now.",...issued});
   }
 
   // Read-only status check for a previously issued key. Does not activate UNUSED keys.
@@ -315,7 +315,7 @@ async function handle(req,env){
   if(p==="/admin/create"&&m==="POST"){
     const b=await body(req),type=str(b.type||b.key_type||"FREE").toUpperCase();
     if(!["FREE","PREMIUM"].includes(type))return err("INVALID_TYPE","type must be FREE or PREMIUM.");
-    return res({success:true,code:"KEY_CREATED",message:`${type} key created.`,...await create(db,type,b.note||"",false)});
+    return res({success:true,code:"KEY_CREATED",message:`${type} key created and activated.`,...await create(db,type,b.note||"",type==="PREMIUM")});
   }
 
   if(p==="/admin/activate"&&m==="POST"){

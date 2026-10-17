@@ -148,9 +148,19 @@ function beginTimer(i){
  tick();timers[i]=setInterval(tick,250);
 }
 startButtons.forEach((btn,i)=>btn.addEventListener('click',()=>openReminder(i)));
-confirmButtons.forEach((btn,i)=>btn.addEventListener('click',()=>{
+confirmButtons.forEach((btn,i)=>btn.addEventListener('click',async()=>{
  if(!started[i]||running[i]||done[i])return;
  done[i]=true;savedState.completedAt[i]=Date.now();persist();render();
+ // Record the user's self-confirmed task completion for the admin review queue.
+ // This is a submission record, not independent proof of a YouTube action.
+ try{
+  let userRef=localStorage.getItem('perma_key_user_ref');
+  if(!userRef){userRef='web-'+(crypto.randomUUID?crypto.randomUUID():Date.now()+'-'+Math.random().toString(36).slice(2));localStorage.setItem('perma_key_user_ref',userRef);}
+  const response=await fetch(API+'/tasks/submit',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({task_id:['subscribe','like','watch','comment'][i],action:'self_confirmed',user_ref:userRef,session_id:userRef,proof:'Timer completed; user confirmed in Free Key website.'})});
+  const result=await response.json();
+  if(!response.ok||result.success!==true)statusText[i].textContent='Task marked complete locally, but submission was not recorded by the API.';
+  else statusText[i].textContent='Task completed. Submission sent for admin review.';
+ }catch(e){statusText[i].textContent='Task marked complete locally; submission could not reach the API.';}
 }));
 openTaskButton.addEventListener('click',()=>{
  if(selectedTask<0)return;

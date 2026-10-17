@@ -262,6 +262,9 @@ for i = 1, 5 do
   task.wait(1)
 end
 splash:Destroy()
+-- The dim overlay belongs only to the five-second loading splash.
+-- Remove it before showing the interactive key form.
+if loadingOverlay and loadingOverlay.Parent then loadingOverlay:Destroy() end
 local fadeGroup = Instance.new("CanvasGroup", gui)
 fadeGroup.Name = "PermaFadeGroup"; fadeGroup.GroupTransparency = 1
 local frame = Instance.new("Frame", fadeGroup)

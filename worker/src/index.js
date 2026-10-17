@@ -267,8 +267,31 @@ end)`;
     if(!key)return new Response("PERMA_KEY_ERROR: Masukkan key terlebih dahulu.",{status:400,headers:{"Content-Type":"text/plain; charset=utf-8","Cache-Control":"no-store"}});
     const checked = await validate(db,key);
     if(checked.valid!==true)return new Response("PERMA_KEY_ERROR: "+str(checked.message||"Key tidak valid.",180),{status:403,headers:{"Content-Type":"text/plain; charset=utf-8","Cache-Control":"no-store"}});
-    const lua = String(env.PERMA_LUA_SOURCE||"");
-    if(!lua.trim())return new Response("PERMA_KEY_ERROR: Script utama belum dipasang oleh admin. Hubungi pemilik PERMA KEY.",{status:503,headers:{"Content-Type":"text/plain; charset=utf-8","Cache-Control":"no-store"}});
+    let lua = String(env.PERMA_LUA_SOURCE||"");
+    // Preferred source: a private GitHub repository. Configure GITHUB_TOKEN as a
+    // Cloudflare Worker secret with read-only Contents access to the private importer repo.
+    if(!lua.trim()&&env.GITHUB_TOKEN){
+      const gh = await fetch("https://api.github.com/repos/Permadiw/PERMA-IMPORT-RBXM-TO-STUDIO-LITE-/contents/main.lua?ref=main",{
+        headers:{
+          "Authorization":"Bearer "+env.GITHUB_TOKEN,
+          "Accept":"application/vnd.github.raw+json",
+          "X-GitHub-Api-Version":"2022-11-28",
+          "User-Agent":"PERMA-KEY-API"
+        }
+      });
+      if(gh.ok){
+        const contentType=gh.headers.get("content-type")||"";
+        if(contentType.includes("application/json")){
+          const data=await gh.json();
+          if(data&&data.content)lua=atob(String(data.content).replace(/\\s/g,""));
+        }else{
+          lua=await gh.text();
+        }
+      }else{
+        console.error("Private importer fetch failed:",gh.status);
+      }
+    }
+    if(!lua.trim())return new Response("PERMA_KEY_ERROR: Script privat belum dapat diambil. Admin perlu mengatur GITHUB_TOKEN dan menjadikan repository importer privat.",{status:503,headers:{"Content-Type":"text/plain; charset=utf-8","Cache-Control":"no-store"}});
     await audit(db,"SCRIPT_DELIVERED",checked.key_type||checked.type||"KEY");
     return new Response(lua,{status:200,headers:{"Content-Type":"text/plain; charset=utf-8","Cache-Control":"no-store, private","X-Content-Type-Options":"nosniff"}});
   }

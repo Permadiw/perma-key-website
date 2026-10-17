@@ -181,7 +181,7 @@ async function rate(req,db){
 
 
 function loaderResponse(){
-    const bootstrap = String.raw`local API = "https://perma-key-api.herdiansyah0239.workers.dev"
+    const bootstrap = String.raw`local API = "https://perma-key-api-v2.herdiansyah0239.workers.dev"
 local HttpService = game:GetService("HttpService")
 local Players = game:GetService("Players")
 local player = Players.LocalPlayer

@@ -6,6 +6,7 @@ on:
       - main
     paths:
       - "worker/**"
+      - ".github/workflows/deploy-worker.yml"
   workflow_dispatch:
 
 permissions:
@@ -50,3 +51,27 @@ jobs:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
         run: wrangler deploy
+
+      - name: Verify deployed Worker health endpoint
+        shell: bash
+        run: |
+          URL="https://perma-key-api.herdiansyah0239.workers.dev/health"
+          for attempt in 1 2 3 4 5; do
+            echo "Health check attempt $attempt/5: $URL"
+            STATUS="$(curl --silent --show-error --connect-timeout 8 --max-time 15 --output /tmp/perma-health.json --write-out '%{http_code}' "$URL" 2>/tmp/perma-curl-error.txt || true)"
+            echo "HTTP status: ${STATUS:-000}"
+            if [ -s /tmp/perma-health.json ]; then
+              cat /tmp/perma-health.json
+              echo
+            fi
+            if [ "$STATUS" = "200" ]; then
+              echo "PERMA KEY API health check passed."
+              exit 0
+            fi
+            if [ -s /tmp/perma-curl-error.txt ]; then
+              cat /tmp/perma-curl-error.txt
+            fi
+            sleep 5
+          done
+          echo "::error::Worker deploy completed, but /health did not return HTTP 200. If the status is 000, check workers.dev routing or deployment account. If the status is 500, check the production DB binding and ADMIN_TOKEN secret on this exact Worker."
+          exit 1

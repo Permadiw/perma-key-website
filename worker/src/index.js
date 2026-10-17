@@ -7,10 +7,11 @@ const H = {
 };
 const FREE = 21600, LIMIT = 5;
 const TASKS = [
-  ["read_rules","Read the Free Key rules","Review the Free Key rules and answer the short check question.","",10],
-  ["install_guide","Review the installation guide","Learn where to paste the key and how to validate it.","",10],
-  ["security_basics","Learn key security","Review the safety tips for protecting your key.","",10],
-  ["api_basics","Complete the knowledge check","Answer a question about how PERMA KEY works.","",10]
+  ["read_rules","Read the Free Key rules","Review the Free Key rules and answer the short check question.","https://www.youtube.com/channel/UCiSTRqsRTp0Lem3_qxYQIwA",30],
+  ["install_guide","Watch the PERMA KEY tutorial","Watch the tutorial and learn how to validate a key.","https://youtu.be/JcgUyeInJpw",60],
+  ["security_basics","Learn key security","Review the safety tips for protecting your key.","https://www.youtube.com/channel/UCiSTRqsRTp0Lem3_qxYQIwA",30],
+  ["discord_join","Join the PERMA Diw Studio Discord","Join the official Discord community.","https://discord.gg/yH7JFNPFB",30],
+  ["api_basics","Complete the final knowledge check","Answer a question about how PERMA KEY works.","https://youtu.be/JcgUyeInJpw",30]
 ];
 const TASK_QUIZZES = {
   read_rules: [
@@ -24,6 +25,10 @@ const TASK_QUIZZES = {
   security_basics: [
     {q:"What is the safest way to handle your key?", options:["Keep it private","Post it publicly","Send it to strangers"], answer:"Keep it private"},
     {q:"What happens if an admin revokes a key?", options:["It should no longer validate","It becomes permanent","It changes into Premium"], answer:"It should no longer validate"}
+  ],
+  discord_join: [
+    {q:"Where can you join the official PERMA Diw Studio community?", options:["The official PERMA Diw Studio Discord invite","A random direct message","An unrelated website"], answer:"The official PERMA Diw Studio Discord invite"},
+    {q:"What should you do after joining the Discord server?", options:["Return to this page and continue honestly","Share your key publicly","Close the page before the timer ends"], answer:"Return to this page and continue honestly"}
   ],
   api_basics: [
     {q:"Which system is authoritative for whether a key is valid?", options:["The PERMA KEY API","A browser timer","A localStorage value"], answer:"The PERMA KEY API"},
@@ -78,6 +83,7 @@ async function schema(db){
   await db.prepare(`CREATE TABLE IF NOT EXISTS free_task_sessions(
     session_id TEXT PRIMARY KEY,completed_json TEXT NOT NULL DEFAULT '[]',
     challenge_task TEXT,challenge_answer TEXT,challenge_expires_at INTEGER,
+    task_started_json TEXT NOT NULL DEFAULT '{}',
     created_at INTEGER NOT NULL,updated_at INTEGER NOT NULL,ip_hash TEXT,
     issued_key_hash TEXT
   )`).run();
@@ -97,6 +103,7 @@ async function schema(db){
   await ensureColumn(db,"tasks","enabled","INTEGER NOT NULL DEFAULT 1");
   await ensureColumn(db,"tasks","sort_order","INTEGER NOT NULL DEFAULT 0");
   await ensureColumn(db,"tasks","created_at","TEXT NOT NULL DEFAULT ''");
+  await ensureColumn(db,"free_task_sessions","task_started_json","TEXT NOT NULL DEFAULT '{}'");
 
   for(const t of TASKS) await db.prepare(`INSERT INTO tasks
     (id,title,description,url,duration_seconds,active,created_at) VALUES(?,?,?,?,?,1,?)
@@ -185,6 +192,21 @@ async function handle(req,env){
     return res({success:true,session_id:sid,tasks:TASKS.map(x=>({id:x[0],title:x[1],description:x[2]}))});
   }
 
+  if(p==="/public/tasks/begin"&&m==="POST"){
+    const b=await body(req),sid=str(b.session_id,100),taskId=str(b.task_id,100);
+    if(!sid||!TASKS.some(x=>x[0]===taskId))return err("INVALID_TASK","A valid session_id and task_id are required.");
+    const session=await db.prepare("SELECT * FROM free_task_sessions WHERE session_id=?").bind(sid).first();
+    if(!session||now()-Number(session.created_at)>7200)return err("SESSION_EXPIRED","Start the task flow again.",410);
+    const completed=JSON.parse(session.completed_json||"[]"),index=TASKS.findIndex(x=>x[0]===taskId);
+    if(index>0&&!completed.includes(TASKS[index-1][0]))return err("TASK_LOCKED","Complete the previous task first.",409);
+    if(completed.includes(taskId))return res({success:true,completed:true,task_id:taskId});
+    const starts=JSON.parse(session.task_started_json||"{}");
+    if(!Number(starts[taskId]))starts[taskId]=now();
+    await db.prepare("UPDATE free_task_sessions SET task_started_json=?,updated_at=? WHERE session_id=?")
+      .bind(JSON.stringify(starts),now(),sid).run();
+    return res({success:true,task_id:taskId,started_at:Number(starts[taskId]),duration_seconds:Number(TASKS[index][4]),deadline:Number(starts[taskId])+Number(TASKS[index][4])});
+  }
+
   if(p==="/public/tasks/challenge"&&m==="POST"){
     const b=await body(req),sid=str(b.session_id,100),taskId=str(b.task_id,100);
     if(!sid||!TASKS.some(x=>x[0]===taskId))return err("INVALID_TASK","A valid session_id and task_id are required.");
@@ -194,6 +216,9 @@ async function handle(req,env){
     const index=TASKS.findIndex(x=>x[0]===taskId);
     if(index>0&&!completed.includes(TASKS[index-1][0]))return err("TASK_LOCKED","Complete the previous task first.",409);
     if(completed.includes(taskId))return res({success:true,completed:true,task_id:taskId});
+    const starts=JSON.parse(session.task_started_json||"{}"),startedAt=Number(starts[taskId]||0),duration=Number(TASKS[index][4]);
+    if(!startedAt)return err("TASK_NOT_STARTED","Start this task before requesting its completion check.",409);
+    if(now()-startedAt<duration)return err("TASK_TIMER_ACTIVE","The server-side task timer has not finished yet.",409);
     const quizList=TASK_QUIZZES[taskId],quiz=quizList[Math.floor(Math.random()*quizList.length)];
     const challengeId=crypto.randomUUID();
     await db.prepare("UPDATE free_task_sessions SET challenge_task=?,challenge_answer=?,challenge_expires_at=?,updated_at=? WHERE session_id=?")

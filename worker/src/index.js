@@ -225,6 +225,11 @@ button.Size = UDim2.new(1, -28, 0, 36); button.Position = UDim2.fromOffset(14, 9
 button.BackgroundColor3 = Color3.fromRGB(0, 145, 210); button.TextColor3 = Color3.new(1,1,1)
 button.Text = "VERIFY KEY & EXECUTE"; button.Font = Enum.Font.GothamBold; button.TextSize = 13
 local bc = Instance.new("UICorner", button); bc.CornerRadius = UDim.new(0, 7)
+local status = Instance.new("TextLabel", frame)
+status.Size = UDim2.new(1, -24, 0, 30); status.Position = UDim2.fromOffset(12, 176)
+status.BackgroundTransparency = 1; status.TextColor3 = Color3.fromRGB(180, 200, 220)
+status.Text = "Free Key berlaku 6 jam; Premium mengikuti pengaturan admin."
+status.Font = Enum.Font.Gotham; status.TextSize = 10; status.TextWrapped = true
 local getFree = Instance.new("TextButton", frame)
 getFree.Size = UDim2.new(1, -28, 0, 30); getFree.Position = UDim2.fromOffset(14, 140)
 getFree.BackgroundColor3 = Color3.fromRGB(28, 105, 72); getFree.TextColor3 = Color3.new(1,1,1)
@@ -243,11 +248,6 @@ getFree.Activated:Connect(function()
     status.Text = "Website Free Key dibuka."
   end
 end)
-local status = Instance.new("TextLabel", frame)
-status.Size = UDim2.new(1, -24, 0, 30); status.Position = UDim2.fromOffset(12, 176)
-status.BackgroundTransparency = 1; status.TextColor3 = Color3.fromRGB(180, 200, 220)
-status.Text = "Free Key berlaku 6 jam; Premium mengikuti pengaturan admin."
-status.Font = Enum.Font.Gotham; status.TextSize = 10; status.TextWrapped = true
 local busy = false
 button.Activated:Connect(function()
   if busy then return end

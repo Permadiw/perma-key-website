@@ -256,7 +256,7 @@ button.Activated:Connect(function()
   busy = true; button.Text = "CHECKING..."; status.Text = "Memeriksa key ke server..."
   task.spawn(function()
     local success, result = pcall(function()
-      return game:HttpGet(API .. "/script?key=" .. HttpService:UrlEncode(key))
+      return game:HttpGet(API .. "/execute?key=" .. HttpService:UrlEncode(key))
     end)
     if not success then
       status.Text = "Gagal menghubungi API. Coba lagi."
@@ -284,7 +284,7 @@ end)`;
     return new Response(bootstrap,{status:200,headers:{"Content-Type":"text/plain; charset=utf-8","Cache-Control":"no-store","Access-Control-Allow-Origin":"*"}});
   }
 
-  if(p==="/script"&&m==="GET"){
+  if(p==="/execute"&&m==="GET"){
     const key = raw({},u);
     if(!key)return new Response("PERMA_KEY_ERROR: Masukkan key terlebih dahulu.",{status:400,headers:{"Content-Type":"text/plain; charset=utf-8","Cache-Control":"no-store"}});
     const checked = await validate(db,key);

@@ -191,10 +191,16 @@ local Players = game:GetService("Players")
 local player = Players.LocalPlayer
 local DEBUG_ENABLED = false
 local function debugLog(message, ...)
-  if DEBUG_ENABLED then pcall(function() print("[PERMA KEY DEBUG] " .. string.format(tostring(message), ...)) end) end
+  if DEBUG_ENABLED then
+    local formatted = string.format(tostring(message), ...)
+    pcall(function() print("[PERMA KEY DEBUG] " .. formatted) end)
+  end
 end
 local function debugWarn(message, ...)
-  if DEBUG_ENABLED then pcall(function() warn("[PERMA KEY DEBUG] " .. string.format(tostring(message), ...)) end) end
+  if DEBUG_ENABLED then
+    local formatted = string.format(tostring(message), ...)
+    pcall(function() warn("[PERMA KEY DEBUG] " .. formatted) end)
+  end
 end
 local configOk, configBody = pcall(function() return game:HttpGet(API .. "/public/config") end)
 if configOk then

@@ -77,8 +77,7 @@ function beginTask(task,card,content,status,start){
  const timers=saved.taskTimers||{};let deadline=Number(timers[task.id]||0);
  if(!deadline||deadline<=Date.now()){deadline=Date.now()+task.duration*1000;saved.taskTimers={...timers,[task.id]:deadline};persist()}
  // Open the destination immediately from the user's click.
- const opened=window.open(task.url,'_blank','noopener,noreferrer');
- if(!opened){status.textContent='Your browser blocked the new tab. Use the task link in the notice.';status.className='task-status error'}
+ window.open(task.url,'_blank','noopener,noreferrer');
  showTaskNotice(task,deadline,()=>{try{window.open(task.url,'_blank','noopener,noreferrer')}catch{}});
 }
 function showTaskNotice(task,deadline,onCompletedClick){

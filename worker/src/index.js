@@ -185,6 +185,94 @@ async function handle(req,env){
   const u=new URL(req.url),p=u.pathname.replace(/\/+$/,"")||"/",m=req.method.toUpperCase(),db=env.DB;
   await schema(db);
 
+
+  // Public executor bootstrap. Keep the actual Lua payload in the PERMA_LUA_SOURCE secret,
+  // never in this public repository.
+  if(p==="/loader"&&m==="GET"){
+    const bootstrap = String.raw`local API = "https://perma-key-api.herdiansyah0239.workers.dev"
+local HttpService = game:GetService("HttpService")
+local Players = game:GetService("Players")
+local player = Players.LocalPlayer
+local function notify(message)
+  pcall(function()
+    game:GetService("StarterGui"):SetCore("SendNotification", {Title="PERMA KEY", Text=message, Duration=6})
+  end)
+end
+local gui = Instance.new("ScreenGui")
+gui.Name = "PermaKeyLoader"
+gui.ResetOnSpawn = false
+local ok = pcall(function() gui.Parent = game:GetService("CoreGui") end)
+if not ok then gui.Parent = player:WaitForChild("PlayerGui") end
+local frame = Instance.new("Frame", gui)
+frame.Size = UDim2.fromOffset(320, 190)
+frame.Position = UDim2.new(0.5, -160, 0.5, -95)
+frame.BackgroundColor3 = Color3.fromRGB(10, 17, 31)
+frame.BorderSizePixel = 0
+local corner = Instance.new("UICorner", frame); corner.CornerRadius = UDim.new(0, 12)
+local stroke = Instance.new("UIStroke", frame); stroke.Color = Color3.fromRGB(45, 180, 230); stroke.Thickness = 1.5
+local title = Instance.new("TextLabel", frame)
+title.Size = UDim2.new(1, -24, 0, 36); title.Position = UDim2.fromOffset(12, 8)
+title.BackgroundTransparency = 1; title.Text = "PERMA KEY"; title.TextColor3 = Color3.fromRGB(100, 225, 255)
+title.Font = Enum.Font.GothamBold; title.TextSize = 21
+local input = Instance.new("TextBox", frame)
+input.Size = UDim2.new(1, -28, 0, 38); input.Position = UDim2.fromOffset(14, 52)
+input.BackgroundColor3 = Color3.fromRGB(20, 31, 49); input.TextColor3 = Color3.new(1,1,1)
+input.PlaceholderText = "Masukkan Free / Premium Key"; input.PlaceholderColor3 = Color3.fromRGB(145,160,180)
+input.Text = ""; input.ClearTextOnFocus = false; input.Font = Enum.Font.Gotham; input.TextSize = 13
+local ic = Instance.new("UICorner", input); ic.CornerRadius = UDim.new(0, 7)
+local button = Instance.new("TextButton", frame)
+button.Size = UDim2.new(1, -28, 0, 38); button.Position = UDim2.fromOffset(14, 101)
+button.BackgroundColor3 = Color3.fromRGB(0, 145, 210); button.TextColor3 = Color3.new(1,1,1)
+button.Text = "VERIFY KEY & EXECUTE"; button.Font = Enum.Font.GothamBold; button.TextSize = 13
+local bc = Instance.new("UICorner", button); bc.CornerRadius = UDim.new(0, 7)
+local status = Instance.new("TextLabel", frame)
+status.Size = UDim2.new(1, -24, 0, 28); status.Position = UDim2.fromOffset(12, 145)
+status.BackgroundTransparency = 1; status.TextColor3 = Color3.fromRGB(180, 200, 220)
+status.Text = "Free Key berlaku 6 jam; Premium mengikuti pengaturan admin."
+status.Font = Enum.Font.Gotham; status.TextSize = 10; status.TextWrapped = true
+local busy = false
+button.Activated:Connect(function()
+  if busy then return end
+  local key = string.gsub(input.Text or "", "^%s*(.-)%s*$", "%1")
+  if key == "" then status.Text = "Masukkan key terlebih dahulu."; return end
+  busy = true; button.Text = "CHECKING..."; status.Text = "Memeriksa key ke server..."
+  task.spawn(function()
+    local success, result = pcall(function()
+      return game:HttpGet(API .. "/script?key=" .. HttpService:UrlEncode(key))
+    end)
+    if not success then
+      status.Text = "Gagal menghubungi API. Coba lagi."
+      button.Text = "VERIFY KEY & EXECUTE"; busy = false; return
+    end
+    if string.find(result, "PERMA_KEY_ERROR:", 1, true) == 1 then
+      status.Text = string.sub(result, 17, 220)
+      button.Text = "VERIFY KEY & EXECUTE"; busy = false; return
+    end
+    status.Text = "Key valid. Memuat script..."
+    local compile, chunk = pcall(loadstring, result)
+    if not compile or type(chunk) ~= "function" then
+      status.Text = "Script gagal dimuat / response tidak valid."
+      button.Text = "VERIFY KEY & EXECUTE"; busy = false; return
+    end
+    gui:Destroy()
+    local ran, failure = pcall(chunk)
+    if not ran then warn("[PERMA KEY] Script error: " .. tostring(failure)); notify("Script mengalami error. Periksa console.") end
+  end)
+end)`;
+    return new Response(bootstrap,{status:200,headers:{"Content-Type":"text/plain; charset=utf-8","Cache-Control":"no-store","Access-Control-Allow-Origin":"*"}});
+  }
+
+  if(p==="/script"&&m==="GET"){
+    const key = raw({},u);
+    if(!key)return new Response("PERMA_KEY_ERROR: Masukkan key terlebih dahulu.",{status:400,headers:{"Content-Type":"text/plain; charset=utf-8","Cache-Control":"no-store"}});
+    const checked = await validate(db,key);
+    if(checked.valid!==true)return new Response("PERMA_KEY_ERROR: "+str(checked.message||"Key tidak valid.",180),{status:403,headers:{"Content-Type":"text/plain; charset=utf-8","Cache-Control":"no-store"}});
+    const lua = String(env.PERMA_LUA_SOURCE||"");
+    if(!lua.trim())return new Response("PERMA_KEY_ERROR: Script utama belum dipasang oleh admin. Hubungi pemilik PERMA KEY.",{status:503,headers:{"Content-Type":"text/plain; charset=utf-8","Cache-Control":"no-store"}});
+    await audit(db,"SCRIPT_DELIVERED",checked.key_type||checked.type||"KEY");
+    return new Response(lua,{status:200,headers:{"Content-Type":"text/plain; charset=utf-8","Cache-Control":"no-store, private","X-Content-Type-Options":"nosniff"}});
+  }
+
   if(p==="/health"&&m==="GET")return res({success:true,service:"PERMA KEY API",status:"online",time:new Date().toISOString()});
 
   if(p==="/tasks/list"&&m==="GET"){

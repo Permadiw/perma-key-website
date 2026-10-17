@@ -138,7 +138,7 @@ function restoreTaskTimer(){
 }
 
 async function post(path,data){
- const r=await fetch(API+path,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(data)});
+ const r=await fetch(API+path,{method:'POST',headers:{'Content-Type':'text/plain;charset=UTF-8'},body:JSON.stringify(data),cache:'no-store'});
  const d=await r.json().catch(()=>({message:'Invalid server response'}));
  if(!r.ok||d.success!==true)throw Error(d.message||d.code||('HTTP '+r.status));
  return d;

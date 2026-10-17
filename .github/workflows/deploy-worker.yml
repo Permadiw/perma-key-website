@@ -1,0 +1,53 @@
+name: Deploy PERMA KEY API to Cloudflare
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - "worker/**"
+      - ".github/workflows/deploy-worker.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+
+      - name: Check required secrets
+        env:
+          CF_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CF_ACCOUNT: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          D1_ID: ${{ secrets.D1_DATABASE_ID }}
+        run: |
+          test -n "$CF_TOKEN" || (echo "Missing CLOUDFLARE_API_TOKEN secret" && exit 1)
+          test -n "$CF_ACCOUNT" || (echo "Missing CLOUDFLARE_ACCOUNT_ID secret" && exit 1)
+          test -n "$D1_ID" || (echo "Missing D1_DATABASE_ID secret" && exit 1)
+
+      - name: Install Wrangler
+        run: npm install --global wrangler@4
+
+      - name: Configure D1 database ID
+        working-directory: worker
+        env:
+          D1_ID: ${{ secrets.D1_DATABASE_ID }}
+        run: |
+          sed -i "s/REPLACE_WITH_D1_DATABASE_ID/$D1_ID/" wrangler.toml
+          grep -q "database_id = \"$D1_ID\"" wrangler.toml
+
+      - name: Deploy Worker
+        working-directory: worker
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+        run: wrangler deploy

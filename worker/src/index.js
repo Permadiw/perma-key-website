@@ -13,28 +13,6 @@ const TASKS = [
   ["watch_video","Watch the PERMA KEY video for at least 1 minute","Keep the video open and watch at least one minute, then return to this page.","https://youtu.be/JcgUyeInJpw",60],
   ["discord_join","Join the PERMA Diw Studio Discord","Open the official Discord invite and join the server, then return here.","https://discord.gg/yH7JFNPFB",30]
 ];
-const TASK_QUIZZES = {
-  subscribe_channel: [
-    {q:"Can this website independently prove that you subscribed without YouTube account authorization?", options:["No, not from a timer or button alone","Yes, a timer proves it","Yes, opening the channel proves it"], answer:"No, not from a timer or button alone"},
-    {q:"What should you do after completing the channel task?", options:["Return and confirm honestly","Share your key publicly","Pretend the task is complete"], answer:"Return and confirm honestly"}
-  ],
-  like_video: [
-    {q:"Does opening a video prove that you liked it?", options:["No","Yes, always","Only if the timer ends"], answer:"No"},
-    {q:"How should you complete this task?", options:["Like the video if you choose to, then confirm honestly","Click random buttons","Claim completion without doing it"], answer:"Like the video if you choose to, then confirm honestly"}
-  ],
-  comment_video: [
-    {q:"What kind of comment should you leave?", options:["A relevant, non-spam comment","Repeated spam","A comment containing private information"], answer:"A relevant, non-spam comment"},
-    {q:"Can this website automatically prove a comment was posted in your account?", options:["No, not with the current setup","Yes, just from waiting","Yes, from browser storage"], answer:"No, not with the current setup"}
-  ],
-  watch_video: [
-    {q:"How long should you watch the linked video for this task?", options:["At least 1 minute","5 seconds","No time at all"], answer:"At least 1 minute"},
-    {q:"What does the server-side countdown prove?", options:["Only that enough time elapsed, not that the video was actually watched","It proves every second was watched","It proves you subscribed"], answer:"Only that enough time elapsed, not that the video was actually watched"}
-  ],
-  discord_join: [
-    {q:"Where can you join the official PERMA Diw Studio community?", options:["The official PERMA Diw Studio Discord invite","A random direct message","An unrelated website"], answer:"The official PERMA Diw Studio Discord invite"},
-    {q:"What should you do after joining the Discord server?", options:["Return to this page and continue honestly","Share your key publicly","Close the page before the timer ends"], answer:"Return to this page and continue honestly"}
-  ]
-};
 
 function res(d,s=200){return new Response(JSON.stringify(d),{status:s,headers:H})}
 function err(c,m,s=400){return res({success:false,code:c,message:m},s)}
@@ -248,40 +226,28 @@ async function handle(req,env){
     return res({success:true,task_id:taskId,started_at:Number(starts[taskId]),duration_seconds:Number(TASKS[index][4]),deadline:Number(starts[taskId])+Number(TASKS[index][4])});
   }
 
+  // Legacy quiz endpoint disabled: all tasks use the same timer + honest confirmation flow.
   if(p==="/public/tasks/challenge"&&m==="POST"){
-    const b=await body(req),sid=str(b.session_id,100),taskId=str(b.task_id,100);
-    if(!sid||!TASKS.some(x=>x[0]===taskId))return err("INVALID_TASK","A valid session_id and task_id are required.");
+    return err("QUIZ_REMOVED","Quiz questions have been removed. Wait for the task timer and confirm honestly.",410);
+  }
+
+  if(p==="/public/tasks/complete"&&m==="POST"){
+    const b=await body(req),sid=str(b.session_id,100),taskId=str(b.task_id,100),confirmed=b.confirmed===true;
+    if(!sid||!taskId||!confirmed)return err("CONFIRMATION_REQUIRED","Confirm that you genuinely completed this task.",400);
     const session=await db.prepare("SELECT * FROM free_task_sessions WHERE session_id=?").bind(sid).first();
     if(!session||now()-Number(session.created_at)>7200)return err("SESSION_EXPIRED","Start the task flow again.",410);
     const completed=JSON.parse(session.completed_json||"[]");
     const index=TASKS.findIndex(x=>x[0]===taskId);
+    if(index<0)return err("INVALID_TASK","Unknown task.",400);
     if(index>0&&!completed.includes(TASKS[index-1][0]))return err("TASK_LOCKED","Complete the previous task first.",409);
-    if(completed.includes(taskId))return res({success:true,completed:true,task_id:taskId});
+    if(completed.includes(taskId))return res({success:true,completed:true,task_id:taskId,completed_tasks:completed,all_complete:TASKS.every(x=>completed.includes(x[0]))});
     const starts=JSON.parse(session.task_started_json||"{}"),startedAt=Number(starts[taskId]||0),duration=Number(TASKS[index][4]);
-    if(!startedAt)return err("TASK_NOT_STARTED","Start this task before requesting its completion check.",409);
-    if(now()-startedAt<duration)return err("TASK_TIMER_ACTIVE","The server-side task timer has not finished yet.",409);
-    const quizList=TASK_QUIZZES[taskId],quiz=quizList[Math.floor(Math.random()*quizList.length)];
-    const challengeId=crypto.randomUUID();
-    await db.prepare("UPDATE free_task_sessions SET challenge_task=?,challenge_answer=?,challenge_expires_at=?,updated_at=? WHERE session_id=?")
-      .bind(taskId,quiz.answer,now()+600,now(),sid).run();
-    return res({success:true,challenge_id:challengeId,task_id:taskId,question:quiz.q,options:quiz.options,expires_in:600});
-  }
-
-  if(p==="/public/tasks/complete"&&m==="POST"){
-    const b=await body(req),sid=str(b.session_id,100),taskId=str(b.task_id,100),answer=str(b.answer,500);
-    if(!sid||!taskId||!answer)return err("FIELDS_REQUIRED","session_id, task_id and answer are required.");
-    const session=await db.prepare("SELECT * FROM free_task_sessions WHERE session_id=?").bind(sid).first();
-    if(!session||now()-Number(session.created_at)>7200)return err("SESSION_EXPIRED","Start the task flow again.",410);
-    if(session.challenge_task!==taskId||Number(session.challenge_expires_at||0)<now())return err("CHALLENGE_EXPIRED","Request a new question and try again.",410);
-    if(answer!==session.challenge_answer){
-      await db.prepare("UPDATE free_task_sessions SET challenge_task=NULL,challenge_answer=NULL,challenge_expires_at=NULL,updated_at=? WHERE session_id=?").bind(now(),sid).run();
-      return err("ANSWER_INCORRECT","That answer is not correct. Try the question again.",422);
-    }
-    const completed=JSON.parse(session.completed_json||"[]");
-    if(!completed.includes(taskId))completed.push(taskId);
+    if(!startedAt)return err("TASK_NOT_STARTED","Start this task before confirming it.",409);
+    if(now()-startedAt<duration)return err("TASK_TIMER_ACTIVE","Please wait until the server-side timer finishes.",409);
+    completed.push(taskId);
     await db.prepare("UPDATE free_task_sessions SET completed_json=?,challenge_task=NULL,challenge_answer=NULL,challenge_expires_at=NULL,updated_at=? WHERE session_id=?")
       .bind(JSON.stringify(completed),now(),sid).run();
-    await audit(db,"FREE_TASK_COMPLETED",taskId);
+    await audit(db,"FREE_TASK_CONFIRMED",taskId);
     return res({success:true,completed:true,task_id:taskId,completed_tasks:completed,all_complete:TASKS.every(x=>completed.includes(x[0]))});
   }
 

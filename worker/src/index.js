@@ -204,8 +204,8 @@ gui.ResetOnSpawn = false
 local ok = pcall(function() gui.Parent = game:GetService("CoreGui") end)
 if not ok then gui.Parent = player:WaitForChild("PlayerGui") end
 local frame = Instance.new("Frame", gui)
-frame.Size = UDim2.fromOffset(320, 190)
-frame.Position = UDim2.new(0.5, -160, 0.5, -95)
+frame.Size = UDim2.fromOffset(320, 230)
+frame.Position = UDim2.new(0.5, -160, 0.5, -115)
 frame.BackgroundColor3 = Color3.fromRGB(10, 17, 31)
 frame.BorderSizePixel = 0
 local corner = Instance.new("UICorner", frame); corner.CornerRadius = UDim.new(0, 12)
@@ -221,12 +221,30 @@ input.PlaceholderText = "Masukkan Free / Premium Key"; input.PlaceholderColor3 =
 input.Text = ""; input.ClearTextOnFocus = false; input.Font = Enum.Font.Gotham; input.TextSize = 13
 local ic = Instance.new("UICorner", input); ic.CornerRadius = UDim.new(0, 7)
 local button = Instance.new("TextButton", frame)
-button.Size = UDim2.new(1, -28, 0, 38); button.Position = UDim2.fromOffset(14, 101)
+button.Size = UDim2.new(1, -28, 0, 36); button.Position = UDim2.fromOffset(14, 98)
 button.BackgroundColor3 = Color3.fromRGB(0, 145, 210); button.TextColor3 = Color3.new(1,1,1)
 button.Text = "VERIFY KEY & EXECUTE"; button.Font = Enum.Font.GothamBold; button.TextSize = 13
 local bc = Instance.new("UICorner", button); bc.CornerRadius = UDim.new(0, 7)
+local getFree = Instance.new("TextButton", frame)
+getFree.Size = UDim2.new(1, -28, 0, 30); getFree.Position = UDim2.fromOffset(14, 140)
+getFree.BackgroundColor3 = Color3.fromRGB(28, 105, 72); getFree.TextColor3 = Color3.new(1,1,1)
+getFree.Text = "GET FREE KEY — OPEN WEBSITE"; getFree.Font = Enum.Font.GothamBold; getFree.TextSize = 11
+local gfc = Instance.new("UICorner", getFree); gfc.CornerRadius = UDim.new(0, 7)
+getFree.Activated:Connect(function()
+  local url = "https://permadiw.github.io/perma-key-website/"
+  local opened = pcall(function() game:GetService("GuiService"):OpenBrowserWindow(url) end)
+  if not opened then
+    local copied = pcall(function()
+      local fn = (type(getgenv)=="function" and getgenv().setclipboard) or setclipboard
+      if type(fn)=="function" then fn(url) else error("clipboard unavailable") end
+    end)
+    status.Text = copied and "Link website disalin. Buka browser untuk mendapat key." or ("Buka website: "..url)
+  else
+    status.Text = "Website Free Key dibuka."
+  end
+end)
 local status = Instance.new("TextLabel", frame)
-status.Size = UDim2.new(1, -24, 0, 28); status.Position = UDim2.fromOffset(12, 145)
+status.Size = UDim2.new(1, -24, 0, 30); status.Position = UDim2.fromOffset(12, 176)
 status.BackgroundTransparency = 1; status.TextColor3 = Color3.fromRGB(180, 200, 220)
 status.Text = "Free Key berlaku 6 jam; Premium mengikuti pengaturan admin."
 status.Font = Enum.Font.Gotham; status.TextSize = 10; status.TextWrapped = true
@@ -249,6 +267,10 @@ button.Activated:Connect(function()
       button.Text = "VERIFY KEY & EXECUTE"; busy = false; return
     end
     status.Text = "Key valid. Memuat script..."
+    pcall(function()
+      local write = (type(getgenv)=="function" and getgenv().writefile) or writefile
+      if type(write)=="function" then write("PERMA_IMPORT_LAST_KEY.txt", key) end
+    end)
     local compile, chunk = pcall(loadstring, result)
     if not compile or type(chunk) ~= "function" then
       status.Text = "Script gagal dimuat / response tidak valid."

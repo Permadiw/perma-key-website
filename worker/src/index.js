@@ -375,7 +375,7 @@ button.Activated:Connect(function()
     task.wait(0.30)
     debugLog("Executing importer chunk...")
     local ran, failure = pcall(chunk)
-    if not ran then debugWarn("Importer runtime error: %s", tostring(failure)); warn("[PERMA KEY] Script error: " .. tostring(failure)); notify("Script mengalami error. Periksa console.")
+    if not ran then debugWarn("Importer runtime error: %s", tostring(failure)); notify("Script mengalami error. Periksa console.")
     else debugLog("Importer chunk returned without an immediate error") end
   end)
 end)

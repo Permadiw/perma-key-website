@@ -7,32 +7,32 @@ const H = {
 };
 const FREE = 21600, LIMIT = 5;
 const TASKS = [
-  ["read_rules","Read the Free Key rules","Review the Free Key rules and answer the short check question.","https://www.youtube.com/channel/UCiSTRqsRTp0Lem3_qxYQIwA",30],
-  ["install_guide","Watch the PERMA KEY tutorial","Watch the tutorial and learn how to validate a key.","https://youtu.be/JcgUyeInJpw",60],
-  ["security_basics","Learn key security","Review the safety tips for protecting your key.","https://www.youtube.com/channel/UCiSTRqsRTp0Lem3_qxYQIwA",30],
-  ["discord_join","Join the PERMA Diw Studio Discord","Join the official Discord community.","https://discord.gg/yH7JFNPFB",30],
-  ["api_basics","Complete the final knowledge check","Answer a question about how PERMA KEY works.","https://youtu.be/JcgUyeInJpw",30]
+  ["subscribe_channel","Subscribe to the PERMA Diw Studio YouTube channel","Open the official channel, subscribe if you choose to, then return and confirm honestly. This site cannot independently verify a subscription without YouTube account authorization.","https://www.youtube.com/channel/UCiSTRqsRTp0Lem3_qxYQIwA",30],
+  ["like_video","Like the PERMA KEY YouTube video","Open the linked video and like it if you choose to. Return and confirm honestly; a timer alone cannot prove a like.","https://youtu.be/JcgUyeInJpw",30],
+  ["comment_video","Comment on the PERMA KEY YouTube video","Open the video and leave a relevant comment if you choose to. Do not post spam. Return and confirm honestly; this site does not automatically verify comments.","https://youtu.be/JcgUyeInJpw",30],
+  ["watch_video","Watch the PERMA KEY video for at least 1 minute","Keep the video open and watch at least one minute, then return to this page.","https://youtu.be/JcgUyeInJpw",60],
+  ["discord_join","Join the PERMA Diw Studio Discord","Open the official Discord invite and join the server, then return here.","https://discord.gg/yH7JFNPFB",30]
 ];
 const TASK_QUIZZES = {
-  read_rules: [
-    {q:"How long is a Free Key valid after its first activation?", options:["30 minutes","6 hours","7 days"], answer:"6 hours"},
-    {q:"When does the 6-hour validity period begin?", options:["When the key is first activated/validated","When this page opens","When a task starts"], answer:"When the key is first activated/validated"}
+  subscribe_channel: [
+    {q:"Can this website independently prove that you subscribed without YouTube account authorization?", options:["No, not from a timer or button alone","Yes, a timer proves it","Yes, opening the channel proves it"], answer:"No, not from a timer or button alone"},
+    {q:"What should you do after completing the channel task?", options:["Return and confirm honestly","Share your key publicly","Pretend the task is complete"], answer:"Return and confirm honestly"}
   ],
-  install_guide: [
-    {q:"Where should you enter a key when a supported script asks for it?", options:["In the key field shown by the supported script","In a public chat","In the browser address bar"], answer:"In the key field shown by the supported script"},
-    {q:"What should you do if validation fails?", options:["Check the key and API status, then retry","Share the key publicly","Disable security checks"], answer:"Check the key and API status, then retry"}
+  like_video: [
+    {q:"Does opening a video prove that you liked it?", options:["No","Yes, always","Only if the timer ends"], answer:"No"},
+    {q:"How should you complete this task?", options:["Like the video if you choose to, then confirm honestly","Click random buttons","Claim completion without doing it"], answer:"Like the video if you choose to, then confirm honestly"}
   ],
-  security_basics: [
-    {q:"What is the safest way to handle your key?", options:["Keep it private","Post it publicly","Send it to strangers"], answer:"Keep it private"},
-    {q:"What happens if an admin revokes a key?", options:["It should no longer validate","It becomes permanent","It changes into Premium"], answer:"It should no longer validate"}
+  comment_video: [
+    {q:"What kind of comment should you leave?", options:["A relevant, non-spam comment","Repeated spam","A comment containing private information"], answer:"A relevant, non-spam comment"},
+    {q:"Can this website automatically prove a comment was posted in your account?", options:["No, not with the current setup","Yes, just from waiting","Yes, from browser storage"], answer:"No, not with the current setup"}
+  ],
+  watch_video: [
+    {q:"How long should you watch the linked video for this task?", options:["At least 1 minute","5 seconds","No time at all"], answer:"At least 1 minute"},
+    {q:"What does the server-side countdown prove?", options:["Only that enough time elapsed, not that the video was actually watched","It proves every second was watched","It proves you subscribed"], answer:"Only that enough time elapsed, not that the video was actually watched"}
   ],
   discord_join: [
     {q:"Where can you join the official PERMA Diw Studio community?", options:["The official PERMA Diw Studio Discord invite","A random direct message","An unrelated website"], answer:"The official PERMA Diw Studio Discord invite"},
     {q:"What should you do after joining the Discord server?", options:["Return to this page and continue honestly","Share your key publicly","Close the page before the timer ends"], answer:"Return to this page and continue honestly"}
-  ],
-  api_basics: [
-    {q:"Which system is authoritative for whether a key is valid?", options:["The PERMA KEY API","A browser timer","A localStorage value"], answer:"The PERMA KEY API"},
-    {q:"Can the website honestly prove a YouTube like without account authorization?", options:["No","Yes, from a timer alone","Yes, from clicking a button"], answer:"No"}
   ]
 };
 
@@ -105,11 +105,30 @@ async function schema(db){
   await ensureColumn(db,"tasks","created_at","TEXT NOT NULL DEFAULT ''");
   await ensureColumn(db,"free_task_sessions","task_started_json","TEXT NOT NULL DEFAULT '{}'");
 
+  await db.prepare("UPDATE tasks SET active=0 WHERE id IN ('read_rules','install_guide','security_basics','api_basics')").run();
   for(const t of TASKS) await db.prepare(`INSERT INTO tasks
     (id,title,description,url,duration_seconds,active,created_at) VALUES(?,?,?,?,?,1,?)
     ON CONFLICT(id) DO UPDATE SET title=excluded.title,description=excluded.description,url=excluded.url,
     duration_seconds=excluded.duration_seconds,active=1`)
     .bind(...t,new Date().toISOString()).run();
+}
+async function verifyTurnstile(req, token, env){
+  const secret = String(env.TURNSTILE_SECRET_KEY || "");
+  if(!secret) return {ok:false,code:"TURNSTILE_NOT_CONFIGURED",message:"Human verification is not configured on the API yet."};
+  if(!token) return {ok:false,code:"TURNSTILE_REQUIRED",message:"Complete the human verification first."};
+  try{
+    const form = new URLSearchParams();
+    form.set("secret",secret);
+    form.set("response",String(token).slice(0,2048));
+    const ip = req.headers.get("CF-Connecting-IP");
+    if(ip) form.set("remoteip",ip);
+    const response = await fetch("https://challenges.cloudflare.com/turnstile/v0/siteverify",{method:"POST",body:form});
+    const result = await response.json();
+    if(result.success === true) return {ok:true};
+    return {ok:false,code:"TURNSTILE_FAILED",message:"Human verification failed or expired. Please verify again."};
+  }catch(e){
+    return {ok:false,code:"TURNSTILE_ERROR",message:"Unable to verify human check right now. Please try again."};
+  }
 }
 async function audit(db,type,detail=""){
   try{await db.prepare("INSERT INTO audit_events(event_type,detail,created_at) VALUES(?,?,?)")
@@ -186,6 +205,8 @@ async function handle(req,env){
 
   if(p==="/public/tasks/start"&&m==="POST"){
     const b=await body(req),existingId=str(b.session_id,100);
+    const humanCheck=await verifyTurnstile(req,str(b.turnstile_token,2048),env);
+    if(!humanCheck.ok)return err(humanCheck.code,humanCheck.message,403);
     if(existingId){
       const existing=await db.prepare("SELECT * FROM free_task_sessions WHERE session_id=?").bind(existingId).first();
       if(existing&&now()-Number(existing.created_at)<=7200){

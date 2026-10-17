@@ -214,49 +214,15 @@ loadingOverlay.Visible = true
 loadingOverlay.ZIndex = 1
 loadingOverlay.Parent = gui
 
--- Five-second branded intro before the key form appears.
-local splash = Instance.new("Frame", gui)
-splash.ZIndex = 2
-splash.Size = UDim2.fromOffset(330, 150)
-splash.AnchorPoint = Vector2.new(0.5, 0.5)
-splash.Position = UDim2.fromScale(0.5, 0.5)
-splash.BackgroundColor3 = Color3.fromRGB(14, 25, 44)
-splash.BorderSizePixel = 0
-local splashCorner = Instance.new("UICorner", splash); splashCorner.CornerRadius = UDim.new(0, 16)
-local splashStroke = Instance.new("UIStroke", splash); splashStroke.Color = Color3.fromRGB(70, 220, 255); splashStroke.Thickness = 2
-local splashTitle = Instance.new("TextLabel", splash)
-splashTitle.Size = UDim2.new(1, -24, 0, 34); splashTitle.Position = UDim2.fromOffset(12, 15)
-splashTitle.BackgroundTransparency = 1; splashTitle.Text = "PERMA IMPORT"
-splashTitle.TextColor3 = Color3.fromRGB(248, 252, 255); splashTitle.Font = Enum.Font.GothamBlack; splashTitle.TextSize = 22
-local splashSub = Instance.new("TextLabel", splash)
-splashSub.Size = UDim2.new(1, -24, 0, 22); splashSub.Position = UDim2.fromOffset(12, 51)
-splashSub.BackgroundTransparency = 1; splashSub.Text = "RBXM TO STUDIO LITE  •  SECURE ACCESS"
-splashSub.TextColor3 = Color3.fromRGB(100, 225, 255); splashSub.Font = Enum.Font.GothamBold; splashSub.TextSize = 10
-local splashTrack = Instance.new("Frame", splash)
-splashTrack.Size = UDim2.new(1, -28, 0, 8); splashTrack.Position = UDim2.fromOffset(14, 88)
-splashTrack.BackgroundColor3 = Color3.fromRGB(39, 56, 80); splashTrack.BorderSizePixel = 0
-Instance.new("UICorner", splashTrack).CornerRadius = UDim.new(1, 0)
-local splashFill = Instance.new("Frame", splashTrack)
-splashFill.Size = UDim2.new(0, 0, 1, 0); splashFill.BackgroundColor3 = Color3.fromRGB(66, 210, 255); splashFill.BorderSizePixel = 0
-Instance.new("UICorner", splashFill).CornerRadius = UDim.new(1, 0)
-local splashStatus = Instance.new("TextLabel", splash)
-splashStatus.Size = UDim2.new(1, -28, 0, 20); splashStatus.Position = UDim2.fromOffset(14, 105)
-splashStatus.BackgroundTransparency = 1; splashStatus.Text = "INITIALIZING SECURE SESSION..."
-splashStatus.TextColor3 = Color3.fromRGB(198, 224, 247); splashStatus.Font = Enum.Font.GothamBold; splashStatus.TextSize = 10
-for i = 1, 5 do
-  splashStatus.Text = ({"CONNECTING TO PERMA SERVER...","PREPARING KEY GATE...","LOADING IMPORT MODULES...","CHECKING SESSION...","READY — ENTER YOUR KEY"})[i]
-  game:GetService("TweenService"):Create(splashFill, TweenInfo.new(1, Enum.EasingStyle.Linear), {Size = UDim2.new(i / 5, 0, 1, 0)}):Play()
-  task.wait(1)
-end
-splash:Destroy()
--- The dim overlay belongs only to the five-second loading splash.
--- Remove it before showing the interactive key form.
+-- Show the key form immediately; do not leave users stuck on a splash screen.
 if loadingOverlay and loadingOverlay.Parent then loadingOverlay:Destroy() end
 local fadeGroup = Instance.new("CanvasGroup", gui)
 fadeGroup.Name = "PermaFadeGroup"; fadeGroup.GroupTransparency = 1
 local frame = Instance.new("Frame", fadeGroup)
+frame.Name = "KeyPanel"
+frame.AnchorPoint = Vector2.new(0.5, 0.5)
 frame.Size = UDim2.fromOffset(340, 290)
-frame.Position = UDim2.new(0.5, -170, 0.5, -145)
+frame.Position = UDim2.fromScale(0.5, 0.5)
 frame.BackgroundColor3 = Color3.fromRGB(10, 17, 31)
 frame.BorderSizePixel = 0
 local corner = Instance.new("UICorner", frame); corner.CornerRadius = UDim.new(0, 12)

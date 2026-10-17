@@ -15,6 +15,16 @@ h1{background:linear-gradient(100deg,#fff,#63dcff,#fff,#7fb6ff);background-size:
 button{background-size:220% 220%;animation:permaGradientFlow 6s ease infinite}
 input::placeholder{color:#819bb9;opacity:1}
 @media(prefers-reduced-motion:reduce){*,*::before,*::after{animation:none!important;transition:none!important}}
+/* Collapsible feature sections */
+.feature-toggle{display:flex;align-items:center;gap:10px;width:100%;text-align:left;margin:0 0 12px;padding:10px 12px;background:linear-gradient(100deg,#13243a,#0d1929);border:1px solid #2a4563;border-radius:10px;color:var(--txt);font-weight:800}
+.feature-toggle:hover{border-color:#29d8f0}
+.feature-toggle .feature-arrow{display:inline-flex;align-items:center;justify-content:center;flex:0 0 22px;width:22px;height:22px;border-radius:6px;background:#203a56;color:#6ee7ff;font-size:17px;line-height:1;transition:transform .18s ease}
+.feature-toggle[aria-expanded="true"] .feature-arrow{transform:rotate(90deg)}
+.feature-toggle .feature-name{flex:1;min-width:0;overflow-wrap:anywhere}
+.feature-content{min-width:0}
+.feature-content[hidden]{display:none!important}
+.panel>.feature-toggle{font-size:15px}
+h2.feature-subtitle{margin-top:18px}
 </style></head>
 <body><main class="wrap">
 <div class="brand brandline"><img src="./file_00000000e7b88211b611e843b0324eaf.png" alt="PERMA Diw Studio logo"><span>PERMA DIW STUDIO<small>KEY MANAGEMENT</small></span></div><header class="hero"><h1>Admin Dashboard</h1><p class="muted">Kelola key FREE 6 jam dan PREMIUM Lifetime, pantau status, serta lihat sisa waktu dari data yang dikirim API.</p></header>
@@ -54,6 +64,46 @@ $('saveTask').onclick=async()=>{const id=$('taskId').value.trim(),title=$('taskT
 $('clearTaskForm').onclick=()=>{['taskId','taskTitle','taskDescription','taskUrl'].forEach(id=>$(id).value='');$('taskDuration').value='15';$('taskActive').checked=true;say('taskStatus','Formulir dikosongkan.')};
 $('loadTasks').onclick=loadAdminExtras;$('loadEvents').onclick=loadEvents;
 async function copyText(value){try{await navigator.clipboard.writeText(value);say('connection','Teks berhasil disalin.')}catch{prompt('Salin teks ini secara manual:',value)}}
+// Add independent minimize/expand controls to every feature heading.
+function setupFeatureMinimize(){
+  const headings=[...document.querySelectorAll('h2')].reverse();
+  for(const heading of headings){
+    if(heading.dataset.collapsibleReady==='1')continue;
+    heading.dataset.collapsibleReady='1';
+    const content=document.createElement('div');
+    content.className='feature-content';
+    let sibling=heading.nextSibling;
+    while(sibling){
+      if(sibling.nodeType===1&&sibling.tagName==='H2')break;
+      const next=sibling.nextSibling;
+      content.appendChild(sibling);
+      sibling=next;
+    }
+    heading.parentNode.insertBefore(content,heading.nextSibling);
+    const toggle=document.createElement('button');
+    toggle.type='button';
+    toggle.className='feature-toggle';
+    toggle.setAttribute('aria-expanded','true');
+    const arrow=document.createElement('span');
+    arrow.className='feature-arrow';
+    arrow.setAttribute('aria-hidden','true');
+    arrow.textContent='▾';
+    const name=document.createElement('span');
+    name.className='feature-name';
+    name.textContent=heading.textContent.trim();
+    toggle.append(arrow,name);
+    toggle.setAttribute('aria-label','Minimize atau tampilkan '+name.textContent);
+    toggle.addEventListener('click',()=>{
+      const expanded=toggle.getAttribute('aria-expanded')==='true';
+      toggle.setAttribute('aria-expanded',String(!expanded));
+      toggle.setAttribute('aria-label',(expanded?'Tampilkan ':'Minimize ')+name.textContent);
+      arrow.textContent=expanded?'▸':'▾';
+      content.hidden=expanded;
+    });
+    heading.replaceWith(toggle);
+  }
+}
+setupFeatureMinimize();
 // Update countdown text each second without repeatedly querying the API.
 setInterval(()=>{if(connected)render()},1000);
 </script></body></html>

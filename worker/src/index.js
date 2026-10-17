@@ -677,10 +677,14 @@ export default {
     // Handle health at the entry point, before routing, D1 setup, or any other logic.
     // This makes the deployment probe independent from all API initialization.
     const healthUrl = new URL(request.url);
-    const healthPath = healthUrl.pathname.toLowerCase().replace(/\/+$/, "") || "/";
+    // Normalize the path once so /loader, /loader/, and case variants route identically.
+    let healthPath = healthUrl.pathname;
+    try { healthPath = decodeURIComponent(healthPath); } catch (_) {}
+    healthPath = healthPath.toLowerCase().replace(/\/+$/, "") || "/";
+    const requestMethod = request.method.toUpperCase();
     // Respond to the root and common health-check paths before any D1 initialization.
     // This also makes the base workers.dev URL useful for a quick browser check.
-    if (request.method.toUpperCase() === "GET" && (healthPath === "/" || healthPath === "/health" || healthPath === "/healthz")) {
+    if (requestMethod === "GET" && (healthPath === "/" || healthPath === "/health" || healthPath === "/healthz")) {
       return new Response(JSON.stringify({
         success: true,
         service: "PERMA KEY API",
@@ -697,7 +701,7 @@ export default {
         }
       });
     }
-    if (request.method.toUpperCase() === "GET" && healthPath === "/loader") return loaderResponse();
+    if (requestMethod === "GET" && (healthPath === "/loader" || healthPath.endsWith("/loader"))) return loaderResponse();
     try{return await handle(request,env)}
     catch(e){
       console.error("PERMA KEY API error:",e?.message||e);

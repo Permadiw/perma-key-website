@@ -1,4 +1,4 @@
-name = "perma-key-api"
+name = "perma-key-api-v2"
 main = "src/index.js"
 compatibility_date = "2026-10-17"
 workers_dev = true

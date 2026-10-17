@@ -313,9 +313,11 @@ button.Activated:Connect(function()
       button.Text = "VERIFY KEY & EXECUTE"; busy = false; return
     end
     status.Text = "Key valid. Memuat script..."
+    freeBadge.Text = string.find(key, "-PRO-", 1, true) and "FREE KEY" or "✓ FREE ACTIVE"
+    premiumBadge.Text = string.find(key, "-PRO-", 1, true) and "✦ PREMIUM ACTIVE" or "PREMIUM"
     local authEnv = _G
     pcall(function() if type(getgenv) == "function" then authEnv = getgenv() end end)
-    pcall(function() authEnv.PERMA_KEY_AUTHORIZED = true; authEnv.PERMA_KEY_TYPE = string.find(key, "PREMIUM", 1, true) and "PREMIUM" or "FREE" end)
+    pcall(function() authEnv.PERMA_KEY_AUTHORIZED = true; authEnv.PERMA_KEY_TYPE = string.find(key, "-PRO-", 1, true) and "PREMIUM" or "FREE" end)
     pcall(function()
       local write = (type(getgenv)=="function" and getgenv().writefile) or writefile
       if type(write)=="function" then write("PERMA_IMPORT_LAST_KEY.txt", key) end

@@ -65,26 +65,25 @@ jobs:
       - name: Verify deployed Worker health endpoint
         shell: bash
         run: |
-          set -u
           URL="https://perma-key-api.herdiansyah0239.workers.dev/health"
-          for attempt in $(seq 1 12); do
-            echo "Health check attempt $attempt/12: $URL"
+          for attempt in 1 2 3 4 5; do
+            echo "Health check attempt $attempt/5: $URL"
             STATUS="$(curl --silent --show-error --connect-timeout 8 --max-time 15 --output /tmp/perma-health.json --write-out '%{http_code}' "$URL" 2>/tmp/perma-curl-error.txt || true)"
             echo "HTTP status: ${STATUS:-000}"
             if [ -s /tmp/perma-health.json ]; then
-              echo "Response body:"
-              head -c 1500 /tmp/perma-health.json
+              cat /tmp/perma-health.json
               echo
             fi
             if [ "$STATUS" = "200" ]; then
               echo "PERMA KEY API health check passed."
               exit 0
             fi
-            if [ -s /tmp/perma-curl-error.txt ]; then cat /tmp/perma-curl-error.txt; fi
-            # Allow additional time for workers.dev routing to propagate after deployment.
-            if [ "$attempt" -lt 12 ]; then sleep 10; fi
+            if [ -s /tmp/perma-curl-error.txt ]; then
+              cat /tmp/perma-curl-error.txt
+            fi
+            sleep 5
           done
-          echo "::error::Worker deployed, but its workers.dev hostname still does not serve /health. Check the hostname's Worker assignment in Cloudflare Dashboard > Workers & Pages and ensure it points to perma-key-api."
+          echo "::error::Worker deploy completed, but /health did not return HTTP 200. Check the response body above; 404 means the deployed Worker is missing the health route or a different script is receiving this hostname."
           exit 1
 
       - name: Verify loader endpoint

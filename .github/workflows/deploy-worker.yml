@@ -116,13 +116,24 @@ jobs:
       - name: Verify execute endpoint rejects an invalid key
         shell: bash
         run: |
-          set -euo pipefail
+          set -u
           URL="https://perma-key-api.herdiansyah0239.workers.dev/execute?key=PERMA-CI-INVALID-KEY"
-          STATUS="$(curl --silent --show-error --connect-timeout 8 --max-time 20 --output /tmp/perma-script-response.txt --write-out '%{http_code}' "$URL")"
-          echo "Invalid-key execute endpoint HTTP status: $STATUS"
-          cat /tmp/perma-script-response.txt
-          # A routed execute endpoint must reject the deliberately invalid key with 403.
-          # HTTP 404 indicates a routing/deployment problem and must still fail this check.
-          test "$STATUS" = "403"
-          grep -q "PERMA_KEY_ERROR" /tmp/perma-script-response.txt
-          echo "Execute endpoint is routed correctly and rejects an invalid key."
+          for attempt in 1 2 3 4 5; do
+            echo "Invalid-key execute check attempt $attempt/5: $URL"
+            STATUS="$(curl --silent --show-error --connect-timeout 8 --max-time 20 --output /tmp/perma-script-response.txt --write-out '%{http_code}' "$URL" 2>/tmp/perma-execute-curl-error.txt || true)"
+            echo "HTTP status: ${STATUS:-000}"
+            if [ -s /tmp/perma-script-response.txt ]; then
+              echo "Response body:"
+              head -c 1000 /tmp/perma-script-response.txt
+              echo
+            fi
+            if [ "$STATUS" = "403" ] && grep -q "PERMA_KEY_ERROR" /tmp/perma-script-response.txt; then
+              echo "Execute endpoint is routed correctly and rejects an invalid key."
+              exit 0
+            fi
+            if [ -s /tmp/perma-execute-curl-error.txt ]; then cat /tmp/perma-execute-curl-error.txt; fi
+            # Cloudflare workers.dev routing may briefly return a stale 404 after deploy.
+            if [ "$attempt" -lt 5 ]; then sleep 5; fi
+          done
+          echo "::error::Execute endpoint did not reject the invalid key with HTTP 403 after 5 attempts."
+          exit 1

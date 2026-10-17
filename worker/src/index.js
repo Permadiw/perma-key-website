@@ -294,7 +294,15 @@ local input = Instance.new("TextBox", frame)
 input.Size = UDim2.new(1, -28, 0, 38); input.Position = UDim2.fromOffset(14, 83)
 input.BackgroundColor3 = Color3.fromRGB(20, 31, 49); input.TextColor3 = Color3.new(1,1,1)
 input.PlaceholderText = "Masukkan Free / Premium Key"; input.PlaceholderColor3 = Color3.fromRGB(145,160,180)
-input.Text = ""; input.ClearTextOnFocus = false; input.Font = Enum.Font.Gotham; input.TextSize = 13
+local savedKey = ""
+pcall(function()
+  local read = (type(getgenv) == "function" and getgenv().readfile) or readfile
+  if type(read) == "function" then
+    local value = read("PERMA_IMPORT_LAST_KEY.txt")
+    if type(value) == "string" then savedKey = string.gsub(value, "^%s*(.-)%s*$", "%1") end
+  end
+end)
+input.Text = savedKey; input.ClearTextOnFocus = false; input.Font = Enum.Font.Gotham; input.TextSize = 13
 local ic = Instance.new("UICorner", input); ic.CornerRadius = UDim.new(0, 7)
 local button = Instance.new("TextButton", frame)
 button.Size = UDim2.new(1, -28, 0, 36); button.Position = UDim2.fromOffset(14, 129)
@@ -330,6 +338,15 @@ getFree.Activated:Connect(function()
     status.Text = "Website Free Key dibuka."
   end
 end)
+if savedKey ~= "" then
+  status.Text = "Saved key found. Verifying automatically..."
+  button.Text = "AUTO VERIFYING..."
+  task.defer(function()
+    if button and button.Parent and gui and gui.Parent then
+      pcall(function() button:Activate() end)
+    end
+  end)
+end
 local busy = false
 button.Activated:Connect(function()
   if busy then return end
@@ -345,12 +362,25 @@ button.Activated:Connect(function()
       button.Text = "VERIFY KEY & EXECUTE"; busy = false; return
     end
     if string.find(result, "PERMA_KEY_ERROR:", 1, true) == 1 then
-      status.Text = string.sub(result, 17, 220)
+      local message = string.sub(result, 17, 220)
+      local lowerMessage = string.lower(message)
+      if string.find(lowerMessage, "expired", 1, true) or string.find(lowerMessage, "revoked", 1, true) then
+        input.Text = ""
+        savedKey = ""
+        pcall(function()
+          local write = (type(getgenv) == "function" and getgenv().writefile) or writefile
+          if type(write) == "function" then write("PERMA_IMPORT_LAST_KEY.txt", "") end
+        end)
+      end
+      status.Text = message
       button.Text = "VERIFY KEY & EXECUTE"; busy = false; return
     end
     status.Text = "Key valid. Memuat script..."
-    freeBadge.Text = string.find(key, "-PRO-", 1, true) and "FREE KEY" or "✓ FREE ACTIVE"
-    premiumBadge.Text = string.find(key, "-PRO-", 1, true) and "✦ PREMIUM ACTIVE" or "PREMIUM"
+    local isPremium = string.find(key, "-PRO-", 1, true) ~= nil
+    freeBadge.Text = isPremium and "FREE • 6H" or "✓ FREE ACTIVE"
+    premiumBadge.Text = isPremium and "✦ PREMIUM ACTIVE" or "PREMIUM • LIFETIME"
+    freeBadge.BackgroundTransparency = isPremium and 0.55 or 0
+    premiumBadge.BackgroundTransparency = isPremium and 0 or 0.55
     local authEnv = _G
     pcall(function() if type(getgenv) == "function" then authEnv = getgenv() end end)
     pcall(function() authEnv.PERMA_KEY_AUTHORIZED = true; authEnv.PERMA_KEY_TYPE = string.find(key, "-PRO-", 1, true) and "PREMIUM" or "FREE" end)

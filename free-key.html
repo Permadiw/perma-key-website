@@ -44,7 +44,7 @@ function showKey(key,expiry){
  const timer=document.createElement('div');timer.className='countdown';
  const note=document.createElement('div');note.className='countdown-note';note.textContent='The API remains authoritative for key validity.';
  wrap.append(title,timer,note);out.append(label,value,copy,wrap);
- const tick=()=>{const left=Math.max(0,expiry-Date.now());timer.textContent=fmt(left);if(left===0){title.textContent='FREE KEY COUNTDOWN · EXPIRED';clearInterval(keyCountdownTimer);keyCountdownTimer=null}};
+ const tick=()=>{if(!expiry){title.textContent='FREE KEY · AWAITING FIRST ACTIVATION';timer.textContent='06:00:00 after activation';note.textContent='The 6-hour validity period begins when the key is first activated/validated.';return}const left=Math.max(0,expiry-Date.now());timer.textContent=fmt(left);if(left===0){title.textContent='FREE KEY COUNTDOWN · EXPIRED';clearInterval(keyCountdownTimer);keyCountdownTimer=null}};
  tick();if(keyCountdownTimer)clearInterval(keyCountdownTimer);keyCountdownTimer=setInterval(tick,1000);
 }
 function render(){
@@ -95,7 +95,7 @@ async function challenge(task,card,content,status,start){
    submit.disabled=true;feedback.textContent='Checking answer with the server...';
    try{const result=await post('/public/tasks/complete',{session_id:sessionId,task_id:task.id,answer:selected.value});
     if(result.completed){completed.add(task.id);persist();busy=false;render()}
-   }catch(e){feedback.textContent=e.message;feedback.className='task-status error';submit.disabled=false}
+   }catch(e){feedback.textContent=e.message+' Start this task again to retry.';feedback.className='task-status error';submit.disabled=true;setTimeout(()=>render(),900)}
   };
   status.textContent='Answer the question below. The server checks your answer.';
   content.append(question,form);
@@ -119,7 +119,7 @@ getBtn.addEventListener('click',async()=>{
  try{
   const d=await post('/public/get-key',{session_id:sessionId});
   const key=d.key||d.data?.key;if(!key)throw Error('The API did not return a key.');
-  const expiry=Number(d.expires_at)>0?Number(d.expires_at)*1000:Date.now()+KEY_LIFETIME_MS;
+  const expiry=Number(d.expires_at)>0?Number(d.expires_at)*1000:null;
   saved.key=key;saved.keyExpiresAt=expiry;saved.claimedAt=Date.now();persist();showKey(key,expiry);
  }catch(e){out.textContent='Unable to retrieve your key: '+e.message;getBtn.disabled=false}
 });

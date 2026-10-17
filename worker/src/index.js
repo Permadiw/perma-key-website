@@ -613,6 +613,25 @@ end)`;
 
 export default {
   async fetch(request,env){
+    // Handle health at the entry point, before routing, D1 setup, or any other logic.
+    // This makes the deployment probe independent from all API initialization.
+    const healthUrl = new URL(request.url);
+    if (request.method.toUpperCase() === "GET" && healthUrl.pathname.replace(/\\/+$/,"") === "/health") {
+      return new Response(JSON.stringify({
+        success: true,
+        service: "PERMA KEY API",
+        status: "online",
+        time: new Date().toISOString(),
+        databaseConfigured: !!env.DB
+      }), {
+        status: 200,
+        headers: {
+          "Content-Type": "application/json; charset=utf-8",
+          "Cache-Control": "no-store",
+          "Access-Control-Allow-Origin": "*"
+        }
+      });
+    }
     try{return await handle(request,env)}
     catch(e){
       console.error("PERMA KEY API error:",e?.message||e);

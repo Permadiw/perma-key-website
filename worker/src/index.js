@@ -220,8 +220,8 @@ async function handle(req,env){
     if(!r)return err("INVALID_KEY","Key not found.",404);
     await audit(db,"KEY_PERMANENTLY_DELETED",`type=${r.key_type}; status=${r.status}`);
     const result=await db.prepare("DELETE FROM keys WHERE key_hash=?").bind(r.key_hash).run();
-    if(!result.meta?.changes)return err("DELETE_FAILED","Key was not deleted.",500);
-    return res({success:true,code:"KEY_PERMANENTLY_DELETED",message:"Key permanently deleted.",key_type:r.key_type});
+    if(Number(result.meta?.changes)===0)return err("DELETE_FAILED","Key was not deleted.",500);
+    return res({success:true,code:"KEY_PERMANENTLY_DELETED",message:"Key permanently deleted.",key_type:r.key_type,deleted:Number(result.meta?.changes??1)});
   }
 
   if(p==="/admin/tasks"&&m==="GET"){

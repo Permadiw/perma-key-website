@@ -34,6 +34,12 @@ function admin(r,e){
 }
 function raw(b,u){return u.searchParams.get("key")||u.searchParams.get("licenseKey")||u.searchParams.get("license_key")||b.key||b.licenseKey||b.license_key||""}
 
+async function ensureColumn(db,table,column,definition){
+  const info=await db.prepare(`PRAGMA table_info(${table})`).all();
+  if(!(info.results||[]).some(c=>c.name===column)){
+    await db.prepare(`ALTER TABLE ${table} ADD COLUMN ${column} ${definition}`).run();
+  }
+}
 async function schema(db){
   await db.prepare(`CREATE TABLE IF NOT EXISTS keys(
     key_hash TEXT PRIMARY KEY,key_type TEXT NOT NULL CHECK(key_type IN('FREE','PREMIUM')),
@@ -41,12 +47,15 @@ async function schema(db){
     created_at INTEGER NOT NULL,activated_at INTEGER,expires_at INTEGER,note TEXT,last_used_at INTEGER
   )`).run();
   await db.prepare(`CREATE TABLE IF NOT EXISTS tasks(
-    id TEXT PRIMARY KEY,title TEXT NOT NULL,description TEXT,url TEXT,
-    duration_seconds INTEGER NOT NULL DEFAULT 15,active INTEGER NOT NULL DEFAULT 1
+    id TEXT PRIMARY KEY,title TEXT NOT NULL,description TEXT NOT NULL DEFAULT '',url TEXT NOT NULL DEFAULT '',
+    duration_seconds INTEGER NOT NULL DEFAULT 15,active INTEGER NOT NULL DEFAULT 1,
+    enabled INTEGER NOT NULL DEFAULT 1,sort_order INTEGER NOT NULL DEFAULT 0,
+    created_at TEXT NOT NULL DEFAULT ''
   )`).run();
   await db.prepare(`CREATE TABLE IF NOT EXISTS task_submissions(
-    id INTEGER PRIMARY KEY AUTOINCREMENT,task_id TEXT NOT NULL,user_ref TEXT,proof TEXT,
-    status TEXT NOT NULL DEFAULT 'PENDING',created_at INTEGER NOT NULL,reviewed_at INTEGER,review_note TEXT
+    id INTEGER PRIMARY KEY AUTOINCREMENT,session_id TEXT,task_id TEXT NOT NULL,action TEXT,
+    created_at INTEGER NOT NULL,ip_hash TEXT,metadata TEXT,user_ref TEXT,proof TEXT,
+    status TEXT NOT NULL DEFAULT 'PENDING',reviewed_at INTEGER,review_note TEXT
   )`).run();
   await db.prepare(`CREATE TABLE IF NOT EXISTS rate_limits(
     id INTEGER PRIMARY KEY AUTOINCREMENT,ip_hash TEXT NOT NULL,created_at INTEGER NOT NULL
@@ -54,8 +63,20 @@ async function schema(db){
   await db.prepare(`CREATE TABLE IF NOT EXISTS audit_events(
     id INTEGER PRIMARY KEY AUTOINCREMENT,event_type TEXT NOT NULL,detail TEXT,created_at INTEGER NOT NULL
   )`).run();
+
+  // Non-destructive compatibility migration for older D1 schemas.
+  for(const [c,d] of [
+    ["user_ref","TEXT"],["proof","TEXT"],["status","TEXT NOT NULL DEFAULT 'PENDING'"],
+    ["reviewed_at","INTEGER"],["review_note","TEXT"]
+  ]) await ensureColumn(db,"task_submissions",c,d);
+  await ensureColumn(db,"tasks","active","INTEGER NOT NULL DEFAULT 1");
+  await ensureColumn(db,"tasks","enabled","INTEGER NOT NULL DEFAULT 1");
+  await ensureColumn(db,"tasks","sort_order","INTEGER NOT NULL DEFAULT 0");
+  await ensureColumn(db,"tasks","created_at","TEXT NOT NULL DEFAULT ''");
+
   for(const t of TASKS) await db.prepare(`INSERT OR IGNORE INTO tasks
-    (id,title,description,url,duration_seconds,active) VALUES(?,?,?,?,?,1)`).bind(...t).run();
+    (id,title,description,url,duration_seconds,active,created_at) VALUES(?,?,?,?,?,1,?)`)
+    .bind(...t,new Date().toISOString()).run();
 }
 async function audit(db,type,detail=""){
   try{await db.prepare("INSERT INTO audit_events(event_type,detail,created_at) VALUES(?,?,?)")
@@ -145,8 +166,13 @@ async function handle(req,env){
     if(!id)return err("TASK_REQUIRED","task_id is required.");
     const task=await db.prepare("SELECT id FROM tasks WHERE id=? AND active=1").bind(id).first();
     if(!task)return err("TASK_NOT_FOUND","Task not found.",404);
-    const r=await db.prepare(`INSERT INTO task_submissions(task_id,user_ref,proof,status,created_at)
-      VALUES(?,?,?,'PENDING',?)`).bind(id,str(b.user_ref||b.user,200),str(b.proof,2000),now()).run();
+    const userRef=str(b.user_ref||b.user||b.session_id,200);
+    const proof=str(b.proof,2000),stamp=new Date().toISOString();
+    const r=await db.prepare(`INSERT INTO task_submissions
+      (session_id,task_id,action,created_at,user_ref,proof,status,metadata)
+      VALUES(?,?,?,?,?,?, 'PENDING', ?)`)
+      .bind(str(b.session_id||userRef||crypto.randomUUID(),200),id,str(b.action||id,100),stamp,userRef,proof,
+        JSON.stringify({source:"perma-key-api"})).run();
     return res({success:true,code:"SUBMISSION_RECEIVED",message:"Submission received for review.",submission_id:r.meta?.last_row_id??null});
   }
 
@@ -195,9 +221,9 @@ async function handle(req,env){
     if(!id||!title)return err("FIELDS_REQUIRED","id and title are required.");
     const duration=Number(b.duration_seconds??15);
     if(!Number.isSafeInteger(duration)||duration<0)return err("INVALID_DURATION","duration_seconds must be a non-negative integer.");
-    await db.prepare(`INSERT INTO tasks(id,title,description,url,duration_seconds,active) VALUES(?,?,?,?,?,?)
+    await db.prepare(`INSERT INTO tasks(id,title,description,url,duration_seconds,active,created_at) VALUES(?,?,?,?,?,?,?)
       ON CONFLICT(id) DO UPDATE SET title=excluded.title,description=excluded.description,url=excluded.url,duration_seconds=excluded.duration_seconds,active=excluded.active`)
-      .bind(id,title,str(b.description,1000),str(b.url,2000),duration,b.active===false||b.active===0?0:1).run();
+      .bind(id,title,str(b.description,1000),str(b.url,2000),duration,b.active===false||b.active===0?0:1,new Date().toISOString()).run();
     await audit(db,"TASK_SAVED",id);
     return res({success:true,code:"TASK_SAVED",id});
   }

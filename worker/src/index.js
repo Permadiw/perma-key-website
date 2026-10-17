@@ -171,7 +171,6 @@ async function rate(req,db){
 async function handle(req,env){
   if(req.method==="OPTIONS")return new Response(null,{status:204,headers:H});
   if(!env.DB)return err("CONFIG_ERROR","D1 binding DB is missing.",500);
-  if(!env.ADMIN_TOKEN)return err("CONFIG_ERROR","ADMIN_TOKEN secret is missing.",500);
   const u=new URL(req.url),p=u.pathname.replace(/\/+$/,"")||"/",m=req.method.toUpperCase(),db=env.DB;
   await schema(db);
 
@@ -305,6 +304,7 @@ async function handle(req,env){
   }
 
   const paths=["/admin/list","/admin/create","/admin/activate","/admin/revoke","/admin/delete","/admin/tasks","/admin/tasks/create","/admin/tasks/review","/admin/events","/admin/events/delete","/admin/events/clear"];
+  if(paths.includes(p)&&!env.ADMIN_TOKEN)return err("CONFIG_ERROR","ADMIN_TOKEN secret is missing on this Worker.",500);
   if(paths.includes(p)&&!admin(req,env))return err("UNAUTHORIZED","Admin authorization required.",401);
 
   if(p==="/admin/list"&&m==="GET"){

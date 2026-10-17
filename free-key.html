@@ -53,8 +53,18 @@ function showKey(key,expiry){
  const timer=document.createElement('div');timer.className='countdown';
  const note=document.createElement('div');note.className='countdown-note';note.textContent='The API remains authoritative for key validity.';
  wrap.append(title,timer,note);out.append(label,value,copy,wrap);
- const tick=()=>{if(!expiry){title.textContent='FREE KEY · AWAITING FIRST ACTIVATION';timer.textContent='06:00:00 after activation';note.textContent='The 6-hour validity period begins when the key is first activated/validated.';return}const left=Math.max(0,expiry-Date.now());timer.textContent=fmt(left);if(left===0){title.textContent='FREE KEY COUNTDOWN · EXPIRED';clearInterval(keyCountdownTimer);keyCountdownTimer=null}};
+ const tick=()=>{if(!expiry){title.textContent='FREE KEY · AWAITING FIRST ACTIVATION';timer.textContent='06:00:00 after activation';note.textContent='The 6-hour validity period begins when the key is first activated/validated.';return}const left=Math.max(0,expiry-Date.now());timer.textContent=fmt(left);if(left===0){clearInterval(keyCountdownTimer);keyCountdownTimer=null;expireSavedKey();}};
  tick();if(keyCountdownTimer)clearInterval(keyCountdownTimer);keyCountdownTimer=setInterval(tick,1000);
+}
+function expireSavedKey(){
+ if(keyCountdownTimer){clearInterval(keyCountdownTimer);keyCountdownTimer=null;}
+ out.hidden=true;out.replaceChildren();
+ try{localStorage.removeItem(STORAGE_KEY)}catch{}
+ saved={};sessionId=null;completed=new Set();humanVerified=false;turnstileToken='';turnstileWidgetId=null;
+ if(taskTimerInterval){clearInterval(taskTimerInterval);taskTimerInterval=null;}
+ if(currentTaskNotice){currentTaskNotice.remove();currentTaskNotice=null;}
+ document.body.style.overflow='';
+ render();startSession();
 }
 function render(){
  list.replaceChildren();
@@ -106,7 +116,7 @@ function showTaskNotice(task,deadline,onCompletedClick){
  const timer=document.createElement('div');timer.className='task-clock';
  const detail=document.createElement('p');detail.className='task-warning';detail.textContent='Only confirm if you have genuinely completed the task.';
  const link=document.createElement('a');link.href=task.url;link.target='_blank';link.rel='noopener noreferrer';link.textContent='Open Task Link';link.style.cssText='display:inline-block;margin:4px 0 8px;color:#6ee7ff;font-size:12px;font-weight:800';
- const button=document.createElement('button');button.type='button';button.textContent='Please wait for the timer';button.disabled=true;
+ const button=document.createElement('button');button.type='button';button.textContent='I Completed the Task';button.disabled=true;button.hidden=true;
  button.onclick=()=>{
   if(Date.now()<deadline){detail.textContent='The countdown is still running. Please complete the task genuinely and wait until the timer reaches zero.';return}
   button.disabled=true;button.textContent='Checking task...';
@@ -120,7 +130,7 @@ function showTaskNotice(task,deadline,onCompletedClick){
  const tick=()=>{
   const left=Math.max(0,Math.ceil((deadline-Date.now())/1000));
   timer.textContent='00:'+String(Math.floor(left/60)).padStart(2,'0')+':'+String(left%60).padStart(2,'0');
-  if(left<=0&&!finished){finished=true;clearInterval(taskTimerInterval);taskTimerInterval=null;button.disabled=false;button.textContent='I Completed the Task';detail.textContent='The timer has ended. Only click “I Completed the Task” after you have genuinely completed this task.'}
+  if(left<=0&&!finished){finished=true;clearInterval(taskTimerInterval);taskTimerInterval=null;button.hidden=false;button.disabled=false;detail.textContent='The timer has ended. Only click “I Completed the Task” after you have genuinely completed this task.'}
  };
  tick();if(!finished)taskTimerInterval=setInterval(tick,250);
 }
@@ -218,8 +228,8 @@ getBtn.addEventListener('click',async()=>{
 async function checkStoredKey(){
  if(!saved.key)return;
  try{const d=await post('/public/key-status',{key:saved.key});
-  if(d.valid!==true){saved={};localStorage.removeItem(STORAGE_KEY);out.hidden=true;return}
-  if(d.key_type==='FREE'&&d.status==='ACTIVE'&&d.expires_at)showKey(saved.key,Number(d.expires_at)*1000);
+  if(d.valid!==true){expireSavedKey();return}
+  if(d.key_type==='FREE'&&d.status==='ACTIVE'&&d.expires_at){saved.keyExpiresAt=Number(d.expires_at)*1000;persist();showKey(saved.key,Number(d.expires_at)*1000)}
  }catch(e){}
 }
 render();startSession();if(saved.key)showKey(saved.key,Number(saved.keyExpiresAt)>0?Number(saved.keyExpiresAt):null);

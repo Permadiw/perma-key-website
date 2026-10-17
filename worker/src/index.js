@@ -180,9 +180,12 @@ async function rate(req,db){
 }
 
 async function handle(req,env){
-  if(req.method==="OPTIONS")return new Response(null,{status:204,headers:H});
+  if(req.method==="OPTIONS")return new Response(null,{status:204,headers:{...H,"Access-Control-Max-Age":"86400"}});
+  const u=new URL(req.url),p=u.pathname.replace(/\/+$/,"")||"/",m=req.method.toUpperCase();
+  // Keep health checks independent from D1 migrations so network/CORS and database failures can be distinguished.
+  if(p==="/health"&&m==="GET")return res({success:true,service:"PERMA KEY API",status:"online",time:new Date().toISOString(),databaseConfigured:!!env.DB});
   if(!env.DB)return err("CONFIG_ERROR","D1 binding DB is missing.",500);
-  const u=new URL(req.url),p=u.pathname.replace(/\/+$/,"")||"/",m=req.method.toUpperCase(),db=env.DB;
+  const db=env.DB;
   await schema(db);
 
 
@@ -377,8 +380,6 @@ end)`;
     await audit(db,"SCRIPT_DELIVERED",checked.key_type||checked.type||"KEY");
     return new Response(lua,{status:200,headers:{"Content-Type":"text/plain; charset=utf-8","Cache-Control":"no-store, private","X-Content-Type-Options":"nosniff"}});
   }
-
-  if(p==="/health"&&m==="GET")return res({success:true,service:"PERMA KEY API",status:"online",time:new Date().toISOString()});
 
   if(p==="/tasks/list"&&m==="GET"){
     return res({success:true,tasks:await activeTasks(db)});

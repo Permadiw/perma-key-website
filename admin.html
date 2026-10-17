@@ -74,7 +74,7 @@ function setupFeatureMinimize(){
     content.className='feature-content';
     let sibling=heading.nextSibling;
     while(sibling){
-      if(sibling.nodeType===1&&sibling.tagName==='H2')break;
+      if(sibling.nodeType===1&&(sibling.tagName==='H2'||sibling.classList.contains('feature-toggle')))break;
       const next=sibling.nextSibling;
       content.appendChild(sibling);
       sibling=next;

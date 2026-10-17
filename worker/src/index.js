@@ -71,6 +71,10 @@ async function schema(db){
   await db.prepare(`CREATE TABLE IF NOT EXISTS audit_events(
     id INTEGER PRIMARY KEY AUTOINCREMENT,event_type TEXT NOT NULL,detail TEXT,created_at INTEGER NOT NULL
   )`).run();
+  await db.prepare(`CREATE TABLE IF NOT EXISTS app_settings(
+    setting_key TEXT PRIMARY KEY,setting_value TEXT NOT NULL,updated_at INTEGER NOT NULL
+  )`).run();
+  await db.prepare("INSERT INTO app_settings(setting_key,setting_value,updated_at) VALUES('loader_debug','0',?) ON CONFLICT(setting_key) DO NOTHING").bind(now()).run();
 
   // Non-destructive compatibility migration for older D1 schemas.
   for(const [c,d] of [
@@ -185,11 +189,25 @@ function loaderResponse(){
 local HttpService = game:GetService("HttpService")
 local Players = game:GetService("Players")
 local player = Players.LocalPlayer
+local DEBUG_ENABLED = false
+local function debugLog(message, ...)
+  if DEBUG_ENABLED then pcall(function() print("[PERMA KEY DEBUG] " .. string.format(tostring(message), ...)) end) end
+end
+local function debugWarn(message, ...)
+  if DEBUG_ENABLED then pcall(function() warn("[PERMA KEY DEBUG] " .. string.format(tostring(message), ...)) end) end
+end
+local configOk, configBody = pcall(function() return game:HttpGet(API .. "/public/config") end)
+if configOk then
+  local parsedOk, parsed = pcall(function() return HttpService:JSONDecode(configBody) end)
+  if parsedOk and type(parsed) == "table" then DEBUG_ENABLED = parsed.loader_debug == true end
+end
+debugLog("Loader started. Debug enabled=%s", tostring(DEBUG_ENABLED))
 local function notify(message)
   pcall(function()
     game:GetService("StarterGui"):SetCore("SendNotification", {Title="PERMA KEY", Text=message, Duration=6})
   end)
 end
+debugLog("Creating ScreenGui...")
 local gui = Instance.new("ScreenGui")
 gui.Name = "PermaKeyLoader"
 gui.ResetOnSpawn = false
@@ -199,6 +217,7 @@ gui.DisplayOrder = 1000000
 gui.Enabled = true
 local ok = pcall(function() gui.Parent = game:GetService("CoreGui") end)
 if not ok then gui.Parent = player:WaitForChild("PlayerGui") end
+debugLog("ScreenGui parent set; CoreGui success=%s", tostring(ok))
 
 -- Full-screen dark overlay, visible during the loader splash and key flow.
 local loadingOverlay = Instance.new("Frame")
@@ -216,6 +235,7 @@ loadingOverlay.Parent = gui
 
 -- Show the key form immediately; do not leave users stuck on a splash screen.
 if loadingOverlay and loadingOverlay.Parent then loadingOverlay:Destroy() end
+debugLog("Building key panel...")
 local fadeGroup = Instance.new("CanvasGroup", gui)
 fadeGroup.Name = "PermaFadeGroup"; fadeGroup.GroupTransparency = 1
 local frame = Instance.new("Frame", fadeGroup)
@@ -279,6 +299,7 @@ end
 local fadeOpen = game:GetService("TweenService"):Create(fadeGroup, TweenInfo.new(0.38, Enum.EasingStyle.Quint, Enum.EasingDirection.Out), {GroupTransparency=0})
 fadeOpen:Play()
 getFree.Activated:Connect(function()
+  debugLog("Get Free Key button clicked")
   local url = "https://permafreekey.pages.dev/"
   local opened = pcall(function() game:GetService("GuiService"):OpenBrowserWindow(url) end)
   if not opened then
@@ -293,20 +314,25 @@ getFree.Activated:Connect(function()
 end)
 local busy = false
 button.Activated:Connect(function()
-  if busy then return end
+  debugLog("Verify/execute button clicked")
+  if busy then debugLog("Ignored click because loader is busy"); return end
   local key = string.gsub(input.Text or "", "^%s*(.-)%s*$", "%1")
-  if key == "" then status.Text = "Masukkan key terlebih dahulu."; return end
+  if key == "" then debugWarn("Verification cancelled: empty key"); status.Text = "Masukkan key terlebih dahulu."; return end
+  debugLog("Sending key validation request to /execute (key value hidden)")
   busy = true; button.Text = "CHECKING..."; status.Text = "Memeriksa key ke server..."
   task.spawn(function()
     local success, result = pcall(function()
       return game:HttpGet(API .. "/execute?key=" .. HttpService:UrlEncode(key))
     end)
     if not success then
+      debugWarn("API request failed: %s", tostring(result))
       status.Text = "Gagal menghubungi API. Coba lagi."
       button.Text = "VERIFY KEY & EXECUTE"; busy = false; return
     end
+    debugLog("API response received; length=%d", #tostring(result))
     if string.find(result, "PERMA_KEY_ERROR:", 1, true) == 1 then
       local message = string.sub(result, 17, 220)
+      debugWarn("Key rejected by API: %s", tostring(message))
       local lowerMessage = string.lower(message)
       if string.find(lowerMessage, "expired", 1, true) or string.find(lowerMessage, "revoked", 1, true) then
         input.Text = ""
@@ -332,15 +358,19 @@ button.Activated:Connect(function()
       local write = (type(getgenv)=="function" and getgenv().writefile) or writefile
       if type(write)=="function" then write("PERMA_IMPORT_LAST_KEY.txt", key) end
     end)
+    debugLog("Key accepted; compiling importer source...")
     local compile, chunk = pcall(loadstring, result)
     if not compile or type(chunk) ~= "function" then
+      debugWarn("Importer compile failed: %s", tostring(chunk))
       status.Text = "Script gagal dimuat / response tidak valid."
       button.Text = "VERIFY KEY & EXECUTE"; busy = false; return
     end
     fadeClose(function() gui:Destroy() end)
     task.wait(0.30)
+    debugLog("Executing importer chunk...")
     local ran, failure = pcall(chunk)
-    if not ran then warn("[PERMA KEY] Script error: " .. tostring(failure)); notify("Script mengalami error. Periksa console.") end
+    if not ran then debugWarn("Importer runtime error: %s", tostring(failure)); warn("[PERMA KEY] Script error: " .. tostring(failure)); notify("Script mengalami error. Periksa console.")
+    else debugLog("Importer chunk returned without an immediate error") end
   end)
 end)
 if savedKey ~= "" then
@@ -374,7 +404,10 @@ async function handle(req,env){
 
   if(db) await schema(db);
 
-
+  if(p==="/public/config"&&m==="GET"){
+    const row=await db.prepare("SELECT setting_value FROM app_settings WHERE setting_key='loader_debug'").first();
+    return res({success:true,loader_debug:String(row?.setting_value||"0")==="1"});
+  }
 
   if(p==="/execute"&&m==="GET"){
     const key = raw({},u);
@@ -540,9 +573,21 @@ async function handle(req,env){
     return res({success:true,code:"SUBMISSION_RECEIVED",message:"Submission received for review.",submission_id:r.meta?.last_row_id??null});
   }
 
-  const paths=["/admin/list","/admin/create","/admin/activate","/admin/revoke","/admin/delete","/admin/tasks","/admin/tasks/create","/admin/tasks/review","/admin/events","/admin/events/delete","/admin/events/clear"];
+  const paths=["/admin/list","/admin/create","/admin/activate","/admin/revoke","/admin/delete","/admin/tasks","/admin/tasks/create","/admin/tasks/review","/admin/events","/admin/events/delete","/admin/events/clear","/admin/loader-debug"];
   if(paths.includes(p)&&!env.ADMIN_TOKEN)return err("CONFIG_ERROR","ADMIN_TOKEN secret is missing on this Worker.",500);
   if(paths.includes(p)&&!admin(req,env))return err("UNAUTHORIZED","Admin authorization required.",401);
+
+  if(p==="/admin/loader-debug"&&m==="GET"){
+    const row=await db.prepare("SELECT setting_value FROM app_settings WHERE setting_key='loader_debug'").first();
+    return res({success:true,enabled:String(row?.setting_value||"0")==="1"});
+  }
+  if(p==="/admin/loader-debug"&&m==="POST"){
+    const b=await body(req),enabled=b.enabled===true;
+    await db.prepare("INSERT INTO app_settings(setting_key,setting_value,updated_at) VALUES('loader_debug',?,?) ON CONFLICT(setting_key) DO UPDATE SET setting_value=excluded.setting_value,updated_at=excluded.updated_at")
+      .bind(enabled?"1":"0",now()).run();
+    await audit(db,"LOADER_DEBUG_CHANGED",enabled?"enabled":"disabled");
+    return res({success:true,enabled,message:"Loader debug "+(enabled?"diaktifkan":"dinonaktifkan")});
+  }
 
   if(p==="/admin/list"&&m==="GET"){
     const r=await db.prepare(`SELECT key_hash,key_type,status,created_at,activated_at,expires_at,note,last_used_at FROM keys ORDER BY created_at DESC`).all();

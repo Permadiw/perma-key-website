@@ -156,6 +156,16 @@ async function handle(req,env){
     return res({success:true,code:"KEY_CREATED",message:"Free Key created. Six hours start at first validation.",...await create(db,"FREE","Public Free Key",false)});
   }
 
+  // Read-only status check for a previously issued key. Does not activate UNUSED keys.
+  if(p==="/public/key-status"&&m==="POST"){
+    const b=await body(req),key=raw(b,u),r=await getKey(db,key);
+    if(!r)return res({success:true,exists:false,valid:false,code:"INVALID_KEY",message:"Key not found."});
+    if(r.status==="REVOKED")return res({success:true,exists:true,valid:false,code:"REVOKED",message:"This key has been revoked.",key_type:r.key_type,status:r.status});
+    if(r.key_type==="FREE"&&r.status==="ACTIVE"&&(!r.expires_at||Number(r.expires_at)<=now()))
+      return res({success:true,exists:true,valid:false,code:"EXPIRED",message:"Free key has expired.",key_type:r.key_type,status:r.status,expires_at:r.expires_at});
+    return res({success:true,exists:true,valid:true,code:"KEY_EXISTS",message:"Key exists and is not expired.",key_type:r.key_type,status:r.status,expires_at:r.expires_at??null});
+  }
+
   if(p==="/validate"&&(m==="GET"||m==="POST")){
     const b=m==="POST"?await body(req):{};
     return res(await validate(db,raw(b,u)));

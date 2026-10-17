@@ -183,7 +183,7 @@ async function handle(req,env){
     return res({success:true,code:"SUBMISSION_RECEIVED",message:"Submission received for review.",submission_id:r.meta?.last_row_id??null});
   }
 
-  const paths=["/admin/list","/admin/create","/admin/activate","/admin/revoke","/admin/delete","/admin/tasks","/admin/tasks/create","/admin/tasks/review","/admin/events"];
+  const paths=["/admin/list","/admin/create","/admin/activate","/admin/revoke","/admin/delete","/admin/tasks","/admin/tasks/create","/admin/tasks/review","/admin/events","/admin/events/delete","/admin/events/clear"];
   if(paths.includes(p)&&!admin(req,env))return err("UNAUTHORIZED","Admin authorization required.",401);
 
   if(p==="/admin/list"&&m==="GET"){
@@ -258,6 +258,19 @@ async function handle(req,env){
   if(p==="/admin/events"&&m==="GET"){
     const r=await db.prepare("SELECT id,event_type,detail,created_at FROM audit_events ORDER BY created_at DESC LIMIT 200").all();
     return res({success:true,events:r.results||[]});
+  }
+
+  if(p==="/admin/events/delete"&&m==="POST"){
+    const b=await body(req),id=Number(b.id);
+    if(!Number.isSafeInteger(id)||id<=0)return err("INVALID_ID","A valid log ID is required.");
+    const result=await db.prepare("DELETE FROM audit_events WHERE id=?").bind(id).run();
+    if(!result.meta?.changes)return err("LOG_NOT_FOUND","Log not found.",404);
+    return res({success:true,code:"LOG_DELETED",message:"Admin log deleted.",deleted:1});
+  }
+
+  if(p==="/admin/events/clear"&&m==="POST"){
+    const result=await db.prepare("DELETE FROM audit_events").run();
+    return res({success:true,code:"LOGS_CLEARED",message:"All admin logs cleared.",deleted:Number(result.meta?.changes||0)});
   }
 
   return err("NOT_FOUND","Endpoint not found.",404);

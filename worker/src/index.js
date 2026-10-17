@@ -372,9 +372,13 @@ async function handle(req,env){
     if(!id||!title)return err("FIELDS_REQUIRED","id and title are required.");
     const duration=Number(b.duration_seconds??15);
     if(!Number.isSafeInteger(duration)||duration<0)return err("INVALID_DURATION","duration_seconds must be a non-negative integer.");
-    await db.prepare(`INSERT INTO tasks(id,title,description,url,duration_seconds,active,created_at) VALUES(?,?,?,?,?,?,?)
-      ON CONFLICT(id) DO UPDATE SET title=excluded.title,description=excluded.description,url=excluded.url,duration_seconds=excluded.duration_seconds,active=excluded.active`)
-      .bind(id,title,str(b.description,1000),str(b.url,2000),duration,b.active===false||b.active===0?0:1,new Date().toISOString()).run();
+    const active=b.active===false||b.active===0?0:1;
+    const order=await db.prepare("SELECT COALESCE(MAX(sort_order),0)+10 AS next_order FROM tasks").first();
+    await db.prepare(`INSERT INTO tasks(id,title,description,url,duration_seconds,active,enabled,sort_order,created_at)
+      VALUES(?,?,?,?,?,?,?,?,?)
+      ON CONFLICT(id) DO UPDATE SET title=excluded.title,description=excluded.description,url=excluded.url,
+      duration_seconds=excluded.duration_seconds,active=excluded.active,enabled=excluded.enabled`)
+      .bind(id,title,str(b.description,1000),str(b.url,2000),duration,active,active,Number(order?.next_order||10),new Date().toISOString()).run();
     await audit(db,"TASK_SAVED",id);
     return res({success:true,code:"TASK_SAVED",id});
   }

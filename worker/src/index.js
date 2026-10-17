@@ -184,6 +184,8 @@ async function handle(req,env){
   const u=new URL(req.url),p=u.pathname.replace(/\/+$/,"")||"/",m=req.method.toUpperCase();
   // Keep health checks independent from D1 migrations so network/CORS and database failures can be distinguished.
   if(p==="/health"&&m==="GET")return res({success:true,service:"PERMA KEY API",status:"online",time:new Date().toISOString(),databaseConfigured:!!env.DB});
+  // Stable smoke-test response for requests that omit a key; this must work even if D1 is unavailable.
+  if(p==="/execute"&&m==="GET"&&!raw({},u))return new Response("PERMA_KEY_ERROR: Masukkan key terlebih dahulu.",{status:400,headers:{"Content-Type":"text/plain; charset=utf-8","Cache-Control":"no-store","Access-Control-Allow-Origin":"*"}});
   if(!env.DB)return err("CONFIG_ERROR","D1 binding DB is missing.",500);
   const db=env.DB;
   await schema(db);

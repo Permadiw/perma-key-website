@@ -75,3 +75,25 @@ jobs:
           done
           echo "::error::Worker deploy completed, but /health did not return HTTP 200. If the status is 000, check workers.dev routing or deployment account. If the status is 500, check the production DB binding and ADMIN_TOKEN secret on this exact Worker."
           exit 1
+
+      - name: Verify loader endpoint
+        shell: bash
+        run: |
+          set -euo pipefail
+          URL="https://perma-key-api.herdiansyah0239.workers.dev/loader"
+          curl --fail --silent --show-error --max-time 20 "$URL" -o /tmp/perma-loader.lua
+          grep -q "VERIFY KEY & EXECUTE" /tmp/perma-loader.lua
+          grep -q "GET FREE KEY" /tmp/perma-loader.lua
+          echo "Loader endpoint passed: key UI and Free Key website button are present."
+
+      - name: Verify script endpoint rejects missing key
+        shell: bash
+        run: |
+          set -euo pipefail
+          URL="https://perma-key-api.herdiansyah0239.workers.dev/script"
+          STATUS="$(curl --silent --show-error --max-time 20 --output /tmp/perma-script-response.txt --write-out '%{http_code}' "$URL")"
+          echo "No-key script endpoint HTTP status: $STATUS"
+          cat /tmp/perma-script-response.txt
+          test "$STATUS" = "400"
+          grep -q "PERMA_KEY_ERROR" /tmp/perma-script-response.txt
+          echo "Script endpoint correctly rejects requests without a key."

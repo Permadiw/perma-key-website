@@ -616,7 +616,7 @@ export default {
     // Handle health at the entry point, before routing, D1 setup, or any other logic.
     // This makes the deployment probe independent from all API initialization.
     const healthUrl = new URL(request.url);
-    const healthPath = healthUrl.pathname.toLowerCase().replace(/\\/+$/, "") || "/";
+    const healthPath = healthUrl.pathname.toLowerCase().replace(/\/+$/, "") || "/";
     // Respond to the root and common health-check paths before any D1 initialization.
     // This also makes the base workers.dev URL useful for a quick browser check.
     if (request.method.toUpperCase() === "GET" && (healthPath === "/" || healthPath === "/health" || healthPath === "/healthz")) {

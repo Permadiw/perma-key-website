@@ -86,14 +86,14 @@ jobs:
           grep -q "GET FREE KEY" /tmp/perma-loader.lua
           echo "Loader endpoint passed: key UI and Free Key website button are present."
 
-      - name: Verify script endpoint rejects missing key
+      - name: Verify execute endpoint rejects missing key
         shell: bash
         run: |
           set -euo pipefail
-          URL="https://perma-key-api.herdiansyah0239.workers.dev/script"
+          URL="https://perma-key-api.herdiansyah0239.workers.dev/execute"
           STATUS="$(curl --silent --show-error --max-time 20 --output /tmp/perma-script-response.txt --write-out '%{http_code}' "$URL")"
-          echo "No-key script endpoint HTTP status: $STATUS"
+          echo "No-key execute endpoint HTTP status: $STATUS"
           cat /tmp/perma-script-response.txt
           test "$STATUS" = "400"
           grep -q "PERMA_KEY_ERROR" /tmp/perma-script-response.txt
-          echo "Script endpoint correctly rejects requests without a key."
+          echo "Execute endpoint correctly rejects requests without a key."

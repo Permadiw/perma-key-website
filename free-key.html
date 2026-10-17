@@ -44,6 +44,34 @@ try{
  if(raw){const parsed=JSON.parse(raw);if(parsed&&Array.isArray(parsed.done)&&parsed.done.length===4)savedState={...freshState(),...parsed};}
 }catch{}
 if(savedState.claimedAt && Date.now() >= (Number(savedState.keyExpiresAt)||Number(savedState.claimedAt)+KEY_LIFETIME_MS)) savedState=freshState();
+async function verifySavedKeyStatus(){
+ if(!savedState.key)return;
+ try{
+  const response=await fetch(API+'/public/key-status',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({key:savedState.key})});
+  const result=await response.json();
+  if(!response.ok||result.success!==true||result.valid!==true){
+   savedState=freshState();
+   done.fill(false);started.fill(false);running.fill(false);remaining.splice(0,4,...durations);
+   timers.forEach((t,i)=>{if(t){clearInterval(t);timers[i]=null;}});
+   if(keyCountdownTimer){clearInterval(keyCountdownTimer);keyCountdownTimer=null;}
+   out.hidden=true;persist();render();
+   return;
+  }
+  if(result.key_type==='FREE'&&result.status==='ACTIVE'&&result.expires_at){
+   const expiry=Number(result.expires_at)*1000;
+   if(Number.isFinite(expiry)&&expiry>Date.now()&&expiry!==Number(savedState.keyExpiresAt)){
+    savedState.keyExpiresAt=expiry;persist();renderKeyOutput(savedState.key,expiry);
+   }else if(Number.isFinite(expiry)&&expiry<=Date.now()){
+    savedState=freshState();done.fill(false);started.fill(false);running.fill(false);
+    remaining.splice(0,4,...durations);timers.forEach((t,i)=>{if(t){clearInterval(t);timers[i]=null;}});
+    if(keyCountdownTimer){clearInterval(keyCountdownTimer);keyCountdownTimer=null;}
+    out.hidden=true;persist();render();
+   }
+  }
+ }catch(e){
+  // Keep local state during temporary network errors; retry on the next interval.
+ }
+}
 const done=savedState.done.map(Boolean);
 const running=[false,false,false,false];
 const started=done.map(Boolean);
@@ -175,6 +203,8 @@ cancelModal.addEventListener('click',()=>{modal.classList.remove('open');selecte
 modal.addEventListener('click',e=>{if(e.target===modal){modal.classList.remove('open');selectedTask=-1;}});
 restoreProgress();render();
 if(savedState.key && savedState.keyExpiresAt){renderKeyOutput(savedState.key, Number(savedState.keyExpiresAt));}
+if(savedState.key)verifySavedKeyStatus();
+setInterval(verifySavedKeyStatus,30000);
 for(let i=0;i<4;i++){
  if(running[i]){
   const tick=()=>{

@@ -206,10 +206,30 @@ end
 local gui = Instance.new("ScreenGui")
 gui.Name = "PermaKeyLoader"
 gui.ResetOnSpawn = false
+gui.IgnoreGuiInset = true
+gui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
+gui.DisplayOrder = 1000000
+gui.Enabled = true
 local ok = pcall(function() gui.Parent = game:GetService("CoreGui") end)
 if not ok then gui.Parent = player:WaitForChild("PlayerGui") end
+
+-- Full-screen dark overlay, visible during the loader splash and key flow.
+local loadingOverlay = Instance.new("Frame")
+loadingOverlay.Name = "LoadingOverlay"
+loadingOverlay.AnchorPoint = Vector2.new(0, 0)
+loadingOverlay.Position = UDim2.new(0, 0, 0, 0)
+loadingOverlay.Size = UDim2.new(1, 0, 1, 0)
+loadingOverlay.BackgroundColor3 = Color3.fromRGB(0, 0, 0)
+loadingOverlay.BackgroundTransparency = 0.4
+loadingOverlay.BorderSizePixel = 0
+loadingOverlay.Active = true
+loadingOverlay.Visible = true
+loadingOverlay.ZIndex = 1
+loadingOverlay.Parent = gui
+
 -- Five-second branded intro before the key form appears.
 local splash = Instance.new("Frame", gui)
+splash.ZIndex = 2
 splash.Size = UDim2.fromOffset(330, 150)
 splash.AnchorPoint = Vector2.new(0.5, 0.5)
 splash.Position = UDim2.fromScale(0.5, 0.5)

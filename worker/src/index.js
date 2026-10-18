@@ -395,7 +395,7 @@ async function handle(req,env){
   if(req.method==="OPTIONS")return new Response(null,{status:204,headers:{...H,"Access-Control-Max-Age":"86400"}});
   const u=new URL(req.url),p=u.pathname.replace(/\/+$/,"")||"/",m=req.method.toUpperCase();
   // Keep health checks independent from D1 migrations so network/CORS and database failures can be distinguished.
-  if(p==="/health"&&m==="GET")return res({success:true,service:"PERMA KEY API",deployment:"route-fix-2026-10-17",status:"online",time:new Date().toISOString(),databaseConfigured:!!env.DB});
+  if(p==="/health"&&m==="GET")return res({success:true,service:"PERMA KEY API",deployment:"integration-fix-2026-10-18",status:"online",time:new Date().toISOString(),databaseConfigured:!!env.DB});
   // Stable smoke-test response for requests that omit a key; this must work even if D1 is unavailable.
   if(p==="/execute"&&m==="GET"&&!raw({},u))return new Response("PERMA_KEY_ERROR: Masukkan key terlebih dahulu.",{status:400,headers:{"Content-Type":"text/plain; charset=utf-8","Cache-Control":"no-store","Access-Control-Allow-Origin":"*"}});
   // The loader UI is static Lua and must remain available even if D1 is temporarily unbound.
@@ -716,7 +716,7 @@ export default {
       return new Response(JSON.stringify({
         success: true,
         service: "PERMA KEY API",
-        deployment: "repair-deploy-2026-10-17-v3",
+        deployment: "integration-fix-2026-10-18",
         status: "online",
         time: new Date().toISOString(),
         databaseConfigured: !!env.DB

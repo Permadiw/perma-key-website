@@ -244,7 +244,7 @@ function showTaskNotice(task,deadline,onCompletedClick){
   if(taskTimerInterval)clearInterval(taskTimerInterval);taskTimerInterval=null;
   panel.remove();backdrop.remove();currentTaskNotice=null;document.body.style.overflow=previousOverflow;onCompletedClick();
  };
- panel.append(heading,message,timer,link,detail,button);document.body.append(backdrop,panel);currentTaskNotice=panel;
+ panel.append(heading,message,link,detail,button);document.body.append(backdrop,panel);currentTaskNotice=panel;
  if(taskTimerInterval)clearInterval(taskTimerInterval);
  let finished=false;
  const tick=()=>{

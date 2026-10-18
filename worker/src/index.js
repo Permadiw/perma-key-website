@@ -184,211 +184,34 @@ async function rate(req,db){
 }
 
 
-function loaderResponse(){
-    const bootstrap = String.raw`local API = "https://perma-key-api-v2.herdiansyah0239.workers.dev"
-local HttpService = game:GetService("HttpService")
-local Players = game:GetService("Players")
-local player = Players.LocalPlayer
-local DEBUG_ENABLED = false
-local function debugLog(message, ...)
-  if DEBUG_ENABLED then
-    local formatted = string.format(tostring(message), ...)
-    pcall(function() print("[PERMA KEY DEBUG] " .. formatted) end)
-  end
-end
-local function debugWarn(message, ...)
-  if DEBUG_ENABLED then
-    local formatted = string.format(tostring(message), ...)
-    pcall(function() warn("[PERMA KEY DEBUG] " .. formatted) end)
-  end
-end
-local configOk, configBody = pcall(function() return game:HttpGet(API .. "/public/config") end)
-if configOk then
-  local parsedOk, parsed = pcall(function() return HttpService:JSONDecode(configBody) end)
-  if parsedOk and type(parsed) == "table" then DEBUG_ENABLED = parsed.loader_debug == true end
-end
-debugLog("Loader started. Debug enabled=%s", tostring(DEBUG_ENABLED))
-local function notify(message)
-  pcall(function()
-    game:GetService("StarterGui"):SetCore("SendNotification", {Title="PERMA KEY", Text=message, Duration=6})
-  end)
-end
-debugLog("Creating ScreenGui...")
-local gui = Instance.new("ScreenGui")
-gui.Name = "PermaKeyLoader"
-gui.ResetOnSpawn = false
-gui.IgnoreGuiInset = true
-gui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
-gui.DisplayOrder = 1000000
-gui.Enabled = true
-local ok = pcall(function() gui.Parent = game:GetService("CoreGui") end)
-if not ok then gui.Parent = player:WaitForChild("PlayerGui") end
-debugLog("ScreenGui parent set; CoreGui success=%s", tostring(ok))
-
--- Full-screen dark overlay, visible during the loader splash and key flow.
-local loadingOverlay = Instance.new("Frame")
-loadingOverlay.Name = "LoadingOverlay"
-loadingOverlay.AnchorPoint = Vector2.new(0, 0)
-loadingOverlay.Position = UDim2.new(0, 0, 0, 0)
-loadingOverlay.Size = UDim2.new(1, 0, 1, 0)
-loadingOverlay.BackgroundColor3 = Color3.fromRGB(0, 0, 0)
-loadingOverlay.BackgroundTransparency = 0.4
-loadingOverlay.BorderSizePixel = 0
-loadingOverlay.Active = true
-loadingOverlay.Visible = true
-loadingOverlay.ZIndex = 1
-loadingOverlay.Parent = gui
-
--- Show the key form immediately; do not leave users stuck on a splash screen.
-if loadingOverlay and loadingOverlay.Parent then loadingOverlay:Destroy() end
-debugLog("Building key panel...")
-local fadeGroup = Instance.new("CanvasGroup", gui)
-fadeGroup.Name = "PermaFadeGroup"; fadeGroup.GroupTransparency = 1
-local frame = Instance.new("Frame", fadeGroup)
-frame.Name = "KeyPanel"
-frame.AnchorPoint = Vector2.new(0.5, 0.5)
-frame.Size = UDim2.fromOffset(340, 290)
-frame.Position = UDim2.fromScale(0.5, 0.5)
-frame.BackgroundColor3 = Color3.fromRGB(10, 17, 31)
-frame.BorderSizePixel = 0
-local corner = Instance.new("UICorner", frame); corner.CornerRadius = UDim.new(0, 12)
-local stroke = Instance.new("UIStroke", frame); stroke.Color = Color3.fromRGB(45, 180, 230); stroke.Thickness = 1.5
-local title = Instance.new("TextLabel", frame)
-title.Size = UDim2.new(1, -24, 0, 32); title.Position = UDim2.fromOffset(12, 8)
-title.BackgroundTransparency = 1; title.Text = "PERMA KEY"; title.TextColor3 = Color3.fromRGB(100, 225, 255)
-title.Font = Enum.Font.GothamBold; title.TextSize = 21
-local freeBadge = Instance.new("TextLabel", frame)
-freeBadge.Size = UDim2.fromOffset(143, 24); freeBadge.Position = UDim2.fromOffset(14, 43)
-freeBadge.BackgroundColor3 = Color3.fromRGB(19, 125, 83); freeBadge.BorderSizePixel = 0
-freeBadge.Text = "✦  FREE KEY  •  6 HOURS"; freeBadge.TextColor3 = Color3.fromRGB(237, 255, 247)
-freeBadge.Font = Enum.Font.GothamBold; freeBadge.TextSize = 9
-Instance.new("UICorner", freeBadge).CornerRadius = UDim.new(0, 7)
-local premiumBadge = Instance.new("TextLabel", frame)
-premiumBadge.Size = UDim2.fromOffset(151, 24); premiumBadge.Position = UDim2.fromOffset(175, 43)
-premiumBadge.BackgroundColor3 = Color3.fromRGB(103, 65, 177); premiumBadge.BorderSizePixel = 0
-premiumBadge.Text = "♛  PREMIUM  •  LIFETIME"; premiumBadge.TextColor3 = Color3.fromRGB(255, 248, 226)
-premiumBadge.Font = Enum.Font.GothamBold; premiumBadge.TextSize = 9
-Instance.new("UICorner", premiumBadge).CornerRadius = UDim.new(0, 7)
-local input = Instance.new("TextBox", frame)
-input.Size = UDim2.new(1, -28, 0, 38); input.Position = UDim2.fromOffset(14, 83)
-input.BackgroundColor3 = Color3.fromRGB(20, 31, 49); input.TextColor3 = Color3.new(1,1,1)
-input.PlaceholderText = "Masukkan Free / Premium Key"; input.PlaceholderColor3 = Color3.fromRGB(145,160,180)
-local savedKey = ""
-pcall(function()
-  local read = (type(getgenv) == "function" and getgenv().readfile) or readfile
-  if type(read) == "function" then
-    local value = read("PERMA_IMPORT_LAST_KEY.txt")
-    if type(value) == "string" then savedKey = string.gsub(value, "^%s*(.-)%s*$", "%1") end
-  end
-end)
-input.Text = savedKey; input.ClearTextOnFocus = false; input.Font = Enum.Font.Gotham; input.TextSize = 13
-local ic = Instance.new("UICorner", input); ic.CornerRadius = UDim.new(0, 7)
-local button = Instance.new("TextButton", frame)
-button.Size = UDim2.new(1, -28, 0, 36); button.Position = UDim2.fromOffset(14, 129)
-button.BackgroundColor3 = Color3.fromRGB(0, 145, 210); button.TextColor3 = Color3.new(1,1,1)
-button.Text = "VERIFY KEY & EXECUTE"; button.Font = Enum.Font.GothamBold; button.TextSize = 13
-local bc = Instance.new("UICorner", button); bc.CornerRadius = UDim.new(0, 7)
-local status = Instance.new("TextLabel", frame)
-status.Size = UDim2.new(1, -24, 0, 30); status.Position = UDim2.fromOffset(12, 247)
-status.BackgroundTransparency = 1; status.TextColor3 = Color3.fromRGB(180, 200, 220)
-status.Text = "Free Key berlaku 6 jam; Premium mengikuti pengaturan admin."
-status.Font = Enum.Font.Gotham; status.TextSize = 10; status.TextWrapped = true
-local getFree = Instance.new("TextButton", frame)
-getFree.Size = UDim2.new(1, -28, 0, 30); getFree.Position = UDim2.fromOffset(14, 171)
-getFree.BackgroundColor3 = Color3.fromRGB(28, 105, 72); getFree.TextColor3 = Color3.new(1,1,1)
-getFree.Text = "GET FREE KEY — OPEN WEBSITE"; getFree.Font = Enum.Font.GothamBold; getFree.TextSize = 11
-local gfc = Instance.new("UICorner", getFree); gfc.CornerRadius = UDim.new(0, 7)
-local function fadeClose(callback)
-  local tw = game:GetService("TweenService"):Create(fadeGroup, TweenInfo.new(0.28, Enum.EasingStyle.Quad, Enum.EasingDirection.In), {GroupTransparency=1})
-  tw:Play(); tw.Completed:Connect(function() if callback then callback() end end)
-end
-local fadeOpen = game:GetService("TweenService"):Create(fadeGroup, TweenInfo.new(0.38, Enum.EasingStyle.Quint, Enum.EasingDirection.Out), {GroupTransparency=0})
-fadeOpen:Play()
-getFree.Activated:Connect(function()
-  debugLog("Get Free Key button clicked")
-  local url = "https://permafreekey.pages.dev/"
-  local opened = pcall(function() game:GetService("GuiService"):OpenBrowserWindow(url) end)
-  if not opened then
-    local copied = pcall(function()
-      local fn = (type(getgenv)=="function" and getgenv().setclipboard) or setclipboard
-      if type(fn)=="function" then fn(url) else error("clipboard unavailable") end
-    end)
-    status.Text = copied and "Link website disalin. Buka browser untuk mendapat key." or ("Buka website: "..url)
-  else
-    status.Text = "Website Free Key dibuka."
-  end
-end)
-local busy = false
-button.Activated:Connect(function()
-  debugLog("Verify/execute button clicked")
-  if busy then debugLog("Ignored click because loader is busy"); return end
-  local key = string.gsub(input.Text or "", "^%s*(.-)%s*$", "%1")
-  if key == "" then debugWarn("Verification cancelled: empty key"); status.Text = "Masukkan key terlebih dahulu."; return end
-  debugLog("Sending key validation request to /execute (key value hidden)")
-  busy = true; button.Text = "CHECKING..."; status.Text = "Memeriksa key ke server..."
-  task.spawn(function()
-    local success, result = pcall(function()
-      return game:HttpGet(API .. "/execute?key=" .. HttpService:UrlEncode(key))
-    end)
-    if not success then
-      debugWarn("API request failed: %s", tostring(result))
-      status.Text = "Gagal menghubungi API. Coba lagi."
-      button.Text = "VERIFY KEY & EXECUTE"; busy = false; return
-    end
-    debugLog("API response received; length=%d", #tostring(result))
-    if string.find(result, "PERMA_KEY_ERROR:", 1, true) == 1 then
-      local message = string.sub(result, 17, 220)
-      debugWarn("Key rejected by API: %s", tostring(message))
-      local lowerMessage = string.lower(message)
-      if string.find(lowerMessage, "expired", 1, true) or string.find(lowerMessage, "revoked", 1, true) then
-        input.Text = ""
-        savedKey = ""
-        pcall(function()
-          local write = (type(getgenv) == "function" and getgenv().writefile) or writefile
-          if type(write) == "function" then write("PERMA_IMPORT_LAST_KEY.txt", "") end
-        end)
-      end
-      status.Text = message
-      button.Text = "VERIFY KEY & EXECUTE"; busy = false; return
-    end
-    status.Text = "Key valid. Memuat script..."
-    local isPremium = string.find(key, "-PRO-", 1, true) ~= nil
-    freeBadge.Text = isPremium and "FREE • 6H" or "✓ FREE ACTIVE"
-    premiumBadge.Text = isPremium and "✦ PREMIUM ACTIVE" or "PREMIUM • LIFETIME"
-    freeBadge.BackgroundTransparency = isPremium and 0.55 or 0
-    premiumBadge.BackgroundTransparency = isPremium and 0 or 0.55
-    local authEnv = _G
-    pcall(function() if type(getgenv) == "function" then authEnv = getgenv() end end)
-    pcall(function() authEnv.PERMA_KEY_AUTHORIZED = true; authEnv.PERMA_KEY_TYPE = string.find(key, "-PRO-", 1, true) and "PREMIUM" or "FREE" end)
-    pcall(function()
-      local write = (type(getgenv)=="function" and getgenv().writefile) or writefile
-      if type(write)=="function" then write("PERMA_IMPORT_LAST_KEY.txt", key) end
-    end)
-    debugLog("Key accepted; compiling importer source...")
-    local compile, chunk = pcall(loadstring, result)
-    if not compile or type(chunk) ~= "function" then
-      debugWarn("Importer compile failed: %s", tostring(chunk))
-      status.Text = "Script gagal dimuat / response tidak valid."
-      button.Text = "VERIFY KEY & EXECUTE"; busy = false; return
-    end
-    fadeClose(function() gui:Destroy() end)
-    task.wait(0.30)
-    debugLog("Executing importer chunk...")
-    local ran, failure = pcall(chunk)
-    if not ran then debugWarn("Importer runtime error: %s", tostring(failure)); notify("Script mengalami error. Periksa console.")
-    else debugLog("Importer chunk returned without an immediate error") end
-  end)
-end)
-if savedKey ~= "" then
-  status.Text = "Saved key found. Verifying automatically..."
-  button.Text = "AUTO VERIFYING..."
-  task.defer(function()
-    if button and button.Parent and gui and gui.Parent then
-      pcall(function() button:Activate() end)
-    end
-  end)
-end`;
-    return new Response(bootstrap,{status:200,headers:{"Content-Type":"text/plain; charset=utf-8","Cache-Control":"no-store","Access-Control-Allow-Origin":"*"}});
+async function loaderResponse(env){
+  // The loading/key UI lives in loader.lua inside the private importer repository.
+  // The Worker only serves that file; main.lua is released by /execute after key validation.
+  const token=String(env.GITHUB_TOKEN||"");
+  if(!token)return new Response("PERMA_KEY_ERROR: GitHub token is not configured.",{status:503,headers:{"Content-Type":"text/plain; charset=utf-8","Cache-Control":"no-store","Access-Control-Allow-Origin":"*"}});
+  let gh;
+  try{
+    gh=await fetch("https://api.github.com/repos/Permadiw/PERMA-IMPORT-RBXM-TO-STUDIO-LITE-/contents/loader.lua?ref=main",{
+      headers:{"Authorization":"Bearer "+token,"Accept":"application/vnd.github.raw+json","X-GitHub-Api-Version":"2022-11-28","User-Agent":"PERMA-KEY-API"}
+    });
+  }catch(e){
+    console.error("Private loader UI fetch failed:",e?.message||e);
+    return new Response("PERMA_KEY_ERROR: Could not reach GitHub to load the UI.",{status:503,headers:{"Content-Type":"text/plain; charset=utf-8","Cache-Control":"no-store","Access-Control-Allow-Origin":"*"}});
+  }
+  if(!gh.ok){
+    console.error("Private loader UI fetch failed:",gh.status);
+    return new Response("PERMA_KEY_ERROR: Private loader UI unavailable (HTTP "+gh.status+").",{status:503,headers:{"Content-Type":"text/plain; charset=utf-8","Cache-Control":"no-store","Access-Control-Allow-Origin":"*"}});
+  }
+  let source="";
+  const contentType=gh.headers.get("content-type")||"";
+  if(contentType.includes("application/json")){
+    const data=await gh.json();
+    if(data&&data.content)source=atob(String(data.content).replace(/\s/g,""));
+  }else{
+    source=await gh.text();
+  }
+  if(!source.trim())return new Response("PERMA_KEY_ERROR: Private loader UI file is empty.",{status:503,headers:{"Content-Type":"text/plain; charset=utf-8","Cache-Control":"no-store","Access-Control-Allow-Origin":"*"}});
+  return new Response(source,{status:200,headers:{"Content-Type":"text/plain; charset=utf-8","Cache-Control":"no-store","Access-Control-Allow-Origin":"*","X-Content-Type-Options":"nosniff"}});
 }
 
 async function handle(req,env){
@@ -404,7 +227,7 @@ async function handle(req,env){
   const db=env.DB;
 
   // Public executor bootstrap remains available even during D1 incidents.
-  if(p==="/loader"&&m==="GET") return loaderResponse();
+  if(p==="/loader"&&m==="GET") return await loaderResponse(env);
 
   // Proxy the logo through the Worker because the importer repository is private.
   // Only this image is exposed; the private Lua source is still delivered by /execute after key validation.
@@ -729,7 +552,7 @@ export default {
         }
       });
     }
-    if (requestMethod === "GET" && (healthPath === "/loader" || healthPath.endsWith("/loader"))) return loaderResponse();
+    if (requestMethod === "GET" && (healthPath === "/loader" || healthPath.endsWith("/loader"))) return await loaderResponse(env);
     try{return await handle(request,env)}
     catch(e){
       console.error("PERMA KEY API error:",e?.message||e);

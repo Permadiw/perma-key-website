@@ -20,6 +20,50 @@ h1 span{background-size:250% auto;animation:permaGradientFlow 5s ease infinite}
 .feature{background-size:220% 220%;animation:permaGlow 5s ease-in-out infinite}
 .status{animation:permaGlow 4s ease-in-out infinite}
 @media(prefers-reduced-motion:reduce){*,*::before,*::after{animation:none!important;transition:none!important}}
+
+/* PERMA DIW STUDIO unified theme: blue / black / white with a true 360-degree gradient rotation. */
+@property --perma-angle {
+  syntax: "<angle>";
+  inherits: false;
+  initial-value: 0deg;
+}
+@keyframes permaGradientSpin { to { --perma-angle: 360deg; } }
+@keyframes permaAmbientSpin {
+  from { transform: translate(-50%,-50%) rotate(0deg); }
+  to { transform: translate(-50%,-50%) rotate(360deg); }
+}
+body { isolation:isolate; background-color:#070c16 !important; color:#f5f9ff !important; }
+body::before {
+  content:""; position:fixed; left:50%; top:50%; width:150vmax; height:150vmax;
+  z-index:-1; pointer-events:none; opacity:.12; border-radius:50%;
+  background:conic-gradient(from var(--perma-angle),#07101f,#176df0,#65e4ff,#ffffff,#164a9e,#07101f);
+  animation:permaAmbientSpin 34s linear infinite;
+}
+button, .btn, a.button, .action-btn, input[type="submit"], input[type="button"] {
+  color:#fff !important;
+  border-color:#53baff !important;
+  background:conic-gradient(from var(--perma-angle),#10356e,#1678f5,#29c8ef,#ffffff,#1678f5,#10356e) !important;
+  animation:permaGradientSpin 6s linear infinite;
+  box-shadow:0 5px 18px #087ce52b;
+}
+button.secondary, .secondary, button.good, .good, button.danger, .danger {
+  color:#fff !important;
+  border-color:#53baff !important;
+  background:conic-gradient(from var(--perma-angle),#0b1a30,#174a86,#237bc6,#48d6f5,#174a86,#0b1a30) !important;
+  animation:permaGradientSpin 7s linear infinite;
+}
+input, select, textarea {
+  color:#f5f9ff !important; background-color:#0b1424 !important;
+  border-color:#315b86 !important;
+}
+.card, .panel, .stat, .keybox {
+  border-color:#2e5b88 !important;
+  box-shadow:0 12px 34px #0004,0 0 0 1px #12345a22;
+}
+.brand, .brandline, .eyebrow, .status, .notice { color:#eaf6ff; }
+@media (prefers-reduced-motion: reduce) {
+  body::before, button, .btn, a.button, .action-btn, input[type="submit"], input[type="button"] { animation-duration:30s; }
+}
 </style>
 </head>
 <body>

@@ -400,12 +400,22 @@ async function handle(req,env){
   if(p==="/execute"&&m==="GET"&&!raw({},u))return new Response("PERMA_KEY_ERROR: Masukkan key terlebih dahulu.",{status:400,headers:{"Content-Type":"text/plain; charset=utf-8","Cache-Control":"no-store","Access-Control-Allow-Origin":"*"}});
   // The loader UI is static Lua and must remain available even if D1 is temporarily unbound.
   // All data-backed routes still require D1 and run the schema migration before use.
-  if(!env.DB && !(p==="/loader"&&m==="GET"))return err("CONFIG_ERROR","D1 binding DB is missing.",500);
+  if(!env.DB && !(p==="/loader"&&m==="GET") && !(p==="/logo"&&m==="GET"))return err("CONFIG_ERROR","D1 binding DB is missing.",500);
   const db=env.DB;
 
-  // Public executor bootstrap. Keep the actual Lua payload in the PERMA_LUA_SOURCE secret,
-  // never in this public repository.
+  // Public executor bootstrap remains available even during D1 incidents.
   if(p==="/loader"&&m==="GET") return loaderResponse();
+
+  // Proxy the logo through the Worker because the importer repository is private.
+  // Only this image is exposed; the private Lua source is still delivered by /execute after key validation.
+  if(p==="/logo"&&m==="GET"){
+    if(!env.GITHUB_TOKEN)return new Response("Logo unavailable.",{status:503,headers:{"Content-Type":"text/plain; charset=utf-8","Cache-Control":"no-store"}});
+    const gh=await fetch("https://api.github.com/repos/Permadiw/PERMA-IMPORT-RBXM-TO-STUDIO-LITE-/contents/file_00000000e7b88211b611e843b0324eaf.png?ref=main",{
+      headers:{"Authorization":"Bearer "+env.GITHUB_TOKEN,"Accept":"application/vnd.github.raw+json","X-GitHub-Api-Version":"2022-11-28","User-Agent":"PERMA-KEY-API"}
+    });
+    if(!gh.ok)return new Response("Logo unavailable.",{status:gh.status===404?404:502,headers:{"Content-Type":"text/plain; charset=utf-8","Cache-Control":"no-store"}});
+    return new Response(await gh.arrayBuffer(),{status:200,headers:{"Content-Type":"image/png","Cache-Control":"public, max-age=3600","X-Content-Type-Options":"nosniff","Access-Control-Allow-Origin":"*"}});
+  }
 
 
   if(db) await schema(db);
@@ -420,10 +430,10 @@ async function handle(req,env){
     if(!key)return new Response("PERMA_KEY_ERROR: Masukkan key terlebih dahulu.",{status:400,headers:{"Content-Type":"text/plain; charset=utf-8","Cache-Control":"no-store"}});
     const checked = await validate(db,key);
     if(checked.valid!==true)return new Response("PERMA_KEY_ERROR: "+str(checked.message||"Key tidak valid.",180),{status:403,headers:{"Content-Type":"text/plain; charset=utf-8","Cache-Control":"no-store"}});
-    let lua = String(env.PERMA_LUA_SOURCE||"");
-    // Preferred source: a private GitHub repository. Configure GITHUB_TOKEN as a
-    // Cloudflare Worker secret with read-only Contents access to the private importer repo.
-    if(!lua.trim()&&env.GITHUB_TOKEN){
+    let lua = "";
+    // Always prefer the latest main.lua from the private GitHub repository.
+    // PERMA_LUA_SOURCE is only a fallback for emergency operation if GitHub cannot be reached.
+    if(env.GITHUB_TOKEN){
       const gh = await fetch("https://api.github.com/repos/Permadiw/PERMA-IMPORT-RBXM-TO-STUDIO-LITE-/contents/main.lua?ref=main",{
         headers:{
           "Authorization":"Bearer "+env.GITHUB_TOKEN,
@@ -444,6 +454,7 @@ async function handle(req,env){
         console.error("Private importer fetch failed:",gh.status);
       }
     }
+    if(!lua.trim())lua=String(env.PERMA_LUA_SOURCE||"");
     if(!lua.trim())return new Response("PERMA_KEY_ERROR: Script privat belum dapat diambil. Admin perlu mengatur GITHUB_TOKEN dan menjadikan repository importer privat.",{status:503,headers:{"Content-Type":"text/plain; charset=utf-8","Cache-Control":"no-store"}});
     await audit(db,"SCRIPT_DELIVERED",checked.key_type||checked.type||"KEY");
     return new Response(lua,{status:200,headers:{"Content-Type":"text/plain; charset=utf-8","Cache-Control":"no-store, private","X-Content-Type-Options":"nosniff"}});

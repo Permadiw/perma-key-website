@@ -287,6 +287,14 @@ async function handle(req,env){
     return res({success:true,tasks:await activeTasks(db)});
   }
 
+  // Friendly GET aliases for diagnostics; the website still uses POST for sessions and key claims.
+  if(p==="/public/tasks"&&m==="GET"){
+    return res({success:true,tasks:await activeTasks(db),note:"Task listing only. Use POST /public/tasks/start to create or resume a task session."});
+  }
+  if(p==="/public/get-key"&&m==="GET"){
+    return err("METHOD_NOT_ALLOWED","Use POST /public/get-key with a completed session_id; GET never creates keys.",405);
+  }
+
   if(p==="/public/tasks/start"&&m==="POST"){
     const b=await body(req),existingId=str(b.session_id,100),tasks=await activeTasks(db);
     if(!tasks.length)return err("NO_ACTIVE_TASKS","No active Free Key tasks are configured. Please contact the site owner.",503);

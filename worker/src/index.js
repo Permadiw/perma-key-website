@@ -5,7 +5,7 @@ const H = {
   "Access-Control-Allow-Methods": "GET, POST, OPTIONS",
   "Access-Control-Allow-Headers": "Content-Type, Authorization"
 };
-const FREE = 21600, LIMIT = 5;
+const FREE = 10800, LIMIT = 5;
 const TASKS = [
   ["subscribe_channel","SUBSCRIBE TO THE PERMA DIW STUDIO YOUTUBE CHANNEL","Open the official PERMA DIW STUDIO channel, subscribe if you choose to, then return and confirm honestly. This site cannot independently verify a subscription without YouTube account authorization.","https://www.youtube.com/channel/UCiSTRqsRTp0Lem3_qxYQIwA",30],
   ["like_video","LIKE A PERMA DIW STUDIO YOUTUBE VIDEO","Open a video published by PERMA DIW STUDIO and like it if you choose to. Return and confirm honestly; a timer alone cannot prove a like.","https://www.youtube.com/channel/UCiSTRqsRTp0Lem3_qxYQIwA/videos",30],
@@ -381,7 +381,7 @@ async function handle(req,env){
     const issued=await create(db,"FREE","Website tasks completed",true);
     await db.prepare("UPDATE free_task_sessions SET issued_key_hash=?,updated_at=? WHERE session_id=? AND issued_key_hash IS NULL")
       .bind(await hash(issued.key),now(),sid).run();
-    return res({success:true,code:"KEY_CREATED",message:"Free Key activated immediately. Six-hour validity starts now.",...issued});
+    return res({success:true,code:"KEY_CREATED",message:"Free Key activated immediately. Three-hour validity starts now.",...issued});
   }
 
   // Read-only status check for a previously issued key. Does not activate UNUSED keys.

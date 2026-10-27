@@ -102,6 +102,31 @@ input, select, textarea {
 @media (prefers-reduced-motion: reduce) {
   body::before, button, .btn, a.button, .action-btn, input[type="submit"], input[type="button"] { animation-duration:30s; }
 }
+
+/* Performance-focused polish: only the page background moves. */
+html{scroll-behavior:auto}
+body{background:#070c16!important;overflow-x:hidden}
+body::before{content:"";position:fixed;inset:-35vmax;z-index:-1;pointer-events:none;opacity:.32;border-radius:50%;background:conic-gradient(from 0deg,#070c16,#123d75,#0e8eb5,#172b59,#070c16);filter:blur(48px);transform:translateZ(0);animation:permaBackgroundDrift 90s linear infinite;will-change:transform}
+body::after{display:none!important}
+@keyframes permaBackgroundDrift{from{transform:rotate(0deg) translateZ(0)}to{transform:rotate(360deg) translateZ(0)}}
+.wrap{animation:none!important}
+.brandline,h1,.card,.card:before,.eyebrow,.discord-join,.fill,.mainbtn,.countdown-wrap,.task-notice,.reward-icon{animation:none!important;background-size:auto!important;text-shadow:none!important}
+.brandline{background:none!important;-webkit-text-fill-color:#f5f9ff!important;color:#f5f9ff!important}
+.brandline small{-webkit-text-fill-color:#b9cbe3!important;color:#b9cbe3!important}
+h1{background:none!important;-webkit-text-fill-color:#f5f9ff!important;color:#f5f9ff!important}
+.card{backdrop-filter:none!important;-webkit-backdrop-filter:none!important;box-shadow:0 18px 46px #0006!important}
+.card:before{display:none!important}
+.fill{background:linear-gradient(90deg,#278bff,#35d5e8)!important;transition:width .25s ease}
+.discord-join,.mainbtn,.reward-action{background:linear-gradient(105deg,#176be8,#0caecb)!important;color:#fff!important}
+button,.discord-join{transition:filter .15s ease!important}
+button:hover,.discord-join:hover{transform:none!important;filter:brightness(1.08);box-shadow:none!important}
+.key-value{font-variant-numeric:tabular-nums;box-shadow:none!important;text-shadow:none!important}
+.out,.countdown-wrap{box-shadow:none!important}
+.reward-overlay{backdrop-filter:none!important;-webkit-backdrop-filter:none!important}
+.reward-card{box-shadow:0 18px 55px #0008!important}
+.reward-confetti{animation-duration:1.8s!important}
+@media(prefers-reduced-motion:reduce){body:before{animation:none!important}*,*::before,*::after{scroll-behavior:auto!important;transition:none!important}}
+
 </style>
 </head>
 <body><main class="wrap">
@@ -147,7 +172,7 @@ function playClaimReward(){
  if(!overlay)return;
  overlay.classList.add('show');
  document.body.style.overflow='hidden';
- for(let i=0;i<72;i++){
+ for(let i=0;i<24;i++){
   const bit=document.createElement('i');bit.className='reward-confetti';
   bit.style.left=(Math.random()*100)+'vw';
   bit.style.background=['#4de7ff','#43e0a0','#ffd36e','#8d9bff','#ffffff'][i%5];

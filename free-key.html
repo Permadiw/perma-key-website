@@ -121,7 +121,7 @@ input, select, textarea {
 <div id="humanStatus" class="task-status">Complete the check below to continue.</div>
 </section>
 <button class="mainbtn" id="get" disabled>COMPLETE ALL TASKS TO GET KEY</button><div class="out" id="out" hidden></div>
-<div class="foot">Free Key validity is 6 hours from claim or generation. The API determines whether a key is valid.</div>
+<div class="foot">Free Key validity is 3 hours from activation. The API determines whether a key is valid.</div>
 </section></main>
 <div class="reward-overlay" id="rewardOverlay" role="dialog" aria-modal="true" aria-labelledby="rewardTitle">
   <section class="reward-card">
@@ -165,7 +165,7 @@ document.getElementById('rewardContinue').addEventListener('click',()=>{
 function fmt(ms){let t=Math.max(0,Math.ceil(ms/1000));return [Math.floor(t/86400),Math.floor(t%86400/3600),Math.floor(t%3600/60),t%60].map(n=>String(n).padStart(2,'0')).join(':')}
 function showKey(key,expiry){
  out.hidden=false;out.replaceChildren();
- const label=document.createElement('div');label.textContent='YOUR FREE KEY · VALID FOR UP TO 6 HOURS';
+ const label=document.createElement('div');label.textContent='YOUR FREE KEY · VALID FOR UP TO 3 HOURS';
  const value=document.createElement('p');value.className='key-value';value.textContent=key;
  const copy=document.createElement('button');copy.className='copy';copy.textContent='COPY KEY';copy.onclick=async()=>{try{await navigator.clipboard.writeText(key);copy.textContent='COPIED'}catch{copy.textContent='Select and copy the key above'}};
  const wrap=document.createElement('div');wrap.className='countdown-wrap';
@@ -173,7 +173,7 @@ function showKey(key,expiry){
  const timer=document.createElement('div');timer.className='countdown';
  const note=document.createElement('div');note.className='countdown-note';note.textContent='The API remains authoritative for key validity.';
  wrap.append(title,timer,note);out.append(label,value,copy,wrap);
- const tick=()=>{if(!expiry){title.textContent='FREE KEY · AWAITING FIRST ACTIVATION';timer.textContent='06:00:00 after activation';note.textContent='The 6-hour validity period begins when the key is first activated/validated.';return}const left=Math.max(0,expiry-Date.now());timer.textContent=fmt(left);if(left===0){clearInterval(keyCountdownTimer);keyCountdownTimer=null;expireSavedKey();}};
+ const tick=()=>{if(!expiry){title.textContent='FREE KEY · AWAITING FIRST ACTIVATION';timer.textContent='03:00:00 after activation';note.textContent='The 3-hour validity period begins when the key is first activated/validated.';return}const left=Math.max(0,expiry-Date.now());timer.textContent=fmt(left);if(left===0){clearInterval(keyCountdownTimer);keyCountdownTimer=null;expireSavedKey();}};
  tick();if(keyCountdownTimer)clearInterval(keyCountdownTimer);keyCountdownTimer=setInterval(tick,1000);
 }
 function expireSavedKey(){

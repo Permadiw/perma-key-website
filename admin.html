@@ -118,6 +118,38 @@ input, select, textarea {
 @media (prefers-reduced-motion: reduce) {
   body::before, button, .btn, a.button, .action-btn, input[type="submit"], input[type="button"] { animation-duration:30s; }
 }
+
+/* Professional compact admin UI. Only the ambient background animates. */
+html{scroll-behavior:auto}
+body{background:#070c16!important;overflow-x:hidden}
+body::before{content:"";position:fixed;inset:-35vmax;z-index:-1;pointer-events:none;opacity:.30;border-radius:50%;background:conic-gradient(from 0deg,#070c16,#123d75,#0e8eb5,#172b59,#070c16);filter:blur(48px);transform:translateZ(0);animation:adminBackgroundDrift 90s linear infinite;will-change:transform}
+body::after{display:none!important}
+@keyframes adminBackgroundDrift{from{transform:rotate(0deg) translateZ(0)}to{transform:rotate(360deg) translateZ(0)}}
+.wrap,.brandline,.hero h1,.panel,.panel:before,.stat,.stat:after,.feature-toggle,.feature-arrow{animation:none!important;text-shadow:none!important}
+.brandline{background:none!important;-webkit-text-fill-color:#f5f9ff!important;color:#f5f9ff!important}
+.brandline small{-webkit-text-fill-color:#b9cbe3!important;color:#b9cbe3!important}
+.hero h1{background:none!important;-webkit-text-fill-color:#f5f9ff!important;color:#f5f9ff!important}
+.panel{backdrop-filter:none!important;-webkit-backdrop-filter:none!important;box-shadow:0 16px 42px #0005,inset 0 1px #ffffff08!important}
+.panel:before,.stat:after{display:none!important}
+button,.btn,a.button,.action-btn,input[type="submit"],input[type="button"],button.secondary,button.good,button.danger,.secondary,.good,.danger{animation:none!important;background:#1768c7!important;color:#fff!important;border-color:#397fb7!important;box-shadow:none!important;transition:filter .15s ease!important}
+button.secondary,.secondary{background:#172b43!important;border-color:#31506f!important}
+button.good,.good{background:#087a62!important;border-color:#24b98b!important}
+button.danger,.danger{background:#8e2942!important;border-color:#d83c63!important}
+button:hover:not(:disabled){transform:none!important;filter:brightness(1.1);box-shadow:none!important}
+.stat:hover{transform:none!important}
+.keybox{box-shadow:none!important}
+.brandline img{box-shadow:none!important}
+#eventList,#taskList,#submissionList{max-height:320px;overflow-y:auto;overscroll-behavior:contain;padding:4px 8px 4px 0;scrollbar-width:thin;scrollbar-color:#315b86 #0a1422;border-radius:10px}
+#eventList .keybox,#taskList .keybox,#submissionList .keybox{margin:8px 0}
+#rows{max-height:none}
+.tablewrap{max-height:440px;overflow:auto;overscroll-behavior:contain;scrollbar-width:thin;scrollbar-color:#315b86 #0a1422}
+.tablewrap thead th{position:sticky;top:0;z-index:2}
+.status,.notice{overflow-wrap:anywhere}
+#newKey{max-height:240px;overflow:auto;overscroll-behavior:contain}
+.feature-content[hidden]{display:none!important}
+@media(max-width:680px){#eventList,#taskList,#submissionList{max-height:280px}.tablewrap{max-height:380px}.panel{backdrop-filter:none!important}}
+@media(prefers-reduced-motion:reduce){body:before{animation:none!important}*,*::before,*::after{scroll-behavior:auto!important;transition:none!important}}
+
 </style></head>
 <body><main class="wrap">
 <div class="brand brandline"><img src="./file_00000000e7b88211b611e843b0324eaf.png" alt="PERMA Diw Studio logo"><span>PERMA DIW STUDIO<small>KEY MANAGEMENT</small></span></div><header class="hero"><h1>Admin Dashboard</h1><p class="muted">Kelola key FREE 3 jam dan PREMIUM Lifetime, pantau status, serta lihat sisa waktu dari data yang dikirim API.</p></header>
@@ -147,7 +179,7 @@ async function refresh(){if(!connected||refreshInFlight)return;refreshInFlight=t
 async function loadLoaderDebug(){try{const d=await req('/admin/loader-debug');$('loaderDebugToggle').checked=!!d.enabled;say('loaderDebugStatus','Debug '+(d.enabled?'AKTIF':'NONAKTIF')+'. '+(d.enabled?'Loader akan menampilkan print/warn saat dijalankan ulang.':'Log debug disenyapkan.'))}catch(e){say('loaderDebugStatus','Gagal membaca pengaturan: '+e.message)}}
 $('saveLoaderDebug').onclick=async()=>{try{const d=await req('/admin/loader-debug','POST',{enabled:$('loaderDebugToggle').checked});$('loaderDebugToggle').checked=!!d.enabled;say('loaderDebugStatus',d.message+'. Jalankan ulang loadingstring untuk menerapkan pengaturan.')}catch(e){say('loaderDebugStatus','Gagal menyimpan pengaturan: '+e.message)}};
 $('connect').onclick=async()=>{say('connection','Menghubungkan ke API…');try{const d=await req('/admin/list');connected=true;allKeys=getArray(d);say('connection','Akses admin berhasil. API terhubung.');render();loadAdminExtras();loadEvents();loadLoaderDebug();if(refreshTimer)clearInterval(refreshTimer);refreshTimer=setInterval(refresh,30000)}catch(e){connected=false;say('connection','Gagal: '+e.message+'\nPastikan token benar dan Worker mengizinkan CORS dari origin website.')}};
-$('create').onclick=async()=>{say('createStatus','Membuat key…');$('newKey').classList.add('hidden');try{const d=await req('/admin/create','POST',{type:$('type').value,note:$('note').value.trim()});const key=d.key||d.data?.key||d.code||d.data?.code;if(key){const box=$('newKey');box.classList.remove('hidden');box.replaceChildren();const p=document.createElement('p');p.textContent='Simpan key ini sekarang: '+key;box.append(p);const b=document.createElement('button');b.textContent='Salin key';b.onclick=()=>copyText(key);box.append(b)}say('createStatus',d.message||(type==='FREE'?'FREE key berhasil dibuat. Masa aktif 3 jam.':'PREMIUM key berhasil dibuat. Masa aktif Lifetime.'));if(type==='FREE')say('createStatus',(d.message||'FREE key berhasil dibuat.')+' Masa aktif FREE: 3 jam sejak key dibuat/diaktifkan.');await refresh()}catch(e){say('createStatus','Gagal: '+e.message)}};
+$('create').onclick=async()=>{say('createStatus','Membuat key…');$('newKey').classList.add('hidden');try{const type=$('type').value;const d=await req('/admin/create','POST',{type,note:$('note').value.trim()});const key=d.key||d.data?.key||d.code||d.data?.code;if(key){const box=$('newKey');box.classList.remove('hidden');box.replaceChildren();const p=document.createElement('p');p.textContent='Simpan key ini sekarang: '+key;box.append(p);const b=document.createElement('button');b.textContent='Salin key';b.onclick=()=>copyText(key);box.append(b)}say('createStatus',d.message||(type==='FREE'?'FREE key berhasil dibuat. Masa aktif 3 jam.':'PREMIUM key berhasil dibuat. Masa aktif Lifetime.'));if(type==='FREE')say('createStatus',(d.message||'FREE key berhasil dibuat.')+' Masa aktif FREE: 3 jam sejak key dibuat/diaktifkan.');await refresh()}catch(e){say('createStatus','Gagal: '+e.message)}};
 $('activate').onclick=async()=>{const key=$('manageKey').value.trim();if(!key){say('manageStatus','Masukkan key atau hash key terlebih dahulu.');return}try{say('manageStatus','Mengaktifkan key…');say('manageStatus',await req('/admin/activate','POST',{key}));await refresh()}catch(e){say('manageStatus','Gagal mengaktifkan: '+e.message)}};
 $('revoke').onclick=async()=>{const key=$('manageKey').value.trim();if(!key){say('manageStatus','Masukkan key atau hash key terlebih dahulu.');return}if(!confirm('Yakin mencabut key ini?'))return;try{say('manageStatus','Mencabut key…');say('manageStatus',await req('/admin/revoke','POST',{key}));await refresh()}catch(e){say('manageStatus','Gagal mencabut: '+e.message)}};
 $('refresh').onclick=refresh;$('search').addEventListener('input',render);$('filterType').addEventListener('change',render);$('selectAll').addEventListener('change',()=>document.querySelectorAll('.keyPick').forEach(c=>c.checked=$('selectAll').checked));async function bulkRun(mode){const picks=[...document.querySelectorAll('.keyPick:checked')].map(c=>c.value).filter(Boolean);if(!picks.length){say('listStatus','Pilih minimal satu key terlebih dahulu.');return}if(!confirm((mode==='activate'?'Aktifkan ':'Cabut ')+picks.length+' key terpilih?'))return;let ok=0,failed=[];for(const key of picks){try{await req('/admin/'+(mode==='activate'?'activate':'revoke'),'POST',{key});ok++}catch(e){failed.push(key+': '+e.message)}}say('listStatus',`Aksi massal selesai: ${ok} berhasil, ${failed.length} gagal.`+(failed.length?'\\n'+failed.slice(0,5).join('\\n'):''));await refresh()}$('bulkActivate').onclick=()=>bulkRun('activate');$('bulkRevoke').onclick=()=>bulkRun('revoke');

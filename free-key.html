@@ -135,7 +135,7 @@ input, select, textarea {
 <script>
 const API='https://perma-key-api-v2.herdiansyah0239.workers.dev';
 const STORAGE_KEY='perma_free_key_internal_tasks_v1';
-const KEY_LIFETIME_MS=6*60*60*1000;
+const KEY_LIFETIME_MS=3*60*60*1000;
 let TASKS=[];
 const TURNSTILE_SITE_KEY='0x4AAAAAAFZGQ4AtU1ySVLDH';
 let sessionId=null,completed=new Set(),busy=false,keyCountdownTimer=null,taskTimerInterval=null,currentTaskNotice=null,turnstileToken="",sessionStartPending=false,humanVerified=false,turnstileWidgetId=null,verifyBusy=false;
@@ -360,8 +360,12 @@ async function startSession(){
   persist();render();restoreTaskTimer();
  }catch(e){
   list.replaceChildren();
-  const msg=document.createElement('div');msg.className='notice error';msg.textContent='Unable to start the task session: '+e.message;
+  const msg=document.createElement('div');msg.className='notice error';msg.textContent='Unable to load Free Key tasks: '+e.message;
   list.append(msg);
+  const retry=document.createElement('button');retry.type='button';retry.className='mainbtn';retry.textContent='RETRY LOADING TASKS';
+  retry.addEventListener('click',()=>{retry.disabled=true;retry.textContent='LOADING TASKS...';list.replaceChildren();const wait=document.createElement('div');wait.className='notice';wait.textContent='Connecting to PERMA KEY API...';list.append(wait);document.getElementById('progressText').textContent='Connecting...';startSession();});
+  list.append(retry);
+  document.getElementById('progressText').textContent='Task loading failed';
  }
 }
 getBtn.addEventListener('click',async()=>{

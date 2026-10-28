@@ -310,7 +310,7 @@ function restoreTaskTimer(){
  if(!active.length)return;
  const task=active[0],deadline=Number(timers[task.id]),status=list.querySelector('#status-'+task.id),card=status&&status.closest('.task');
  if(!card)return;const content=card.querySelector('.task-content'),start=card.querySelector('.start-task');
- if(content&&status&&start)showTaskNotice(task,deadline,()=>completeTask(task,card,content,status,start));
+ if(content&&status&&start)showTaskNotice(task,deadline,()=>completeTask(task,card,content,status,start),card,content,status,start);
 }
 
 async function post(path,data){

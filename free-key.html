@@ -153,14 +153,14 @@ button:hover,.discord-join:hover{transform:none!important;filter:brightness(1.08
 .reward-confetti{animation-duration:1.8s!important}
 @media(prefers-reduced-motion:reduce){body:before{animation:none!important}*,*::before,*::after{scroll-behavior:auto!important;transition:none!important}}
 
-</style>
+.task-clock{display:none!important}\n</style>
 </head>
 <body><main class="wrap">
 <div class="brand brandline"><img src="./file_00000000e7b88211b611e843b0324eaf.png" alt="PERMA Diw Studio logo"><span>PERMA DIW STUDIO<small>PERMA KEY PORTAL</small></span></div>
 <section class="card">
 <a class="discord-join" href="https://discord.gg/PvKTnGnJs" target="_blank" rel="noopener noreferrer">Join PERMA Diw Studio Discord</a>
 <div class="eyebrow">Free access · Website tasks</div><h1>Get your FREE key</h1>
-<p class="intro">Complete every active task listed below in order, wait for each timer, then confirm honestly and complete the human verification to claim your Free Key.</p>
+<p class="intro">Complete every active task listed below in order, confirm honestly, and complete the human verification to claim your Free Key.</p>
 <div class="notice">Please complete every task honestly. Only confirm tasks you have genuinely completed.</div>
 
 <div class="progress-head"><span>YOUR PROGRESS</span><span id="progressText">Loading tasks…</span></div><div class="track"><div class="fill" id="progressFill"></div></div>
@@ -274,35 +274,34 @@ async function beginTask(task,card,content,status,start){
   const deadline=Number(d.deadline)*1000;
   saved.taskTimers={...(saved.taskTimers||{}),[task.id]:deadline};persist();
   if(task.url){if(opened)opened.location.href=task.url;else status.textContent='Your browser blocked the new tab. Use the task link in the notice.';}
-  showTaskNotice(task,deadline,()=>completeTask(task,card,content,status,start));
+  showTaskNotice(task,deadline,()=>completeTask(task,card,content,status,start),card,content,status,start);
  }catch(e){if(opened)opened.close();status.textContent=e.message;status.className='task-status error'}
 }
-function showTaskNotice(task,deadline,onCompletedClick){
+function showTaskNotice(task,deadline,onCompletedClick,card,content,status,start){
  if(currentTaskNotice){currentTaskNotice.remove();currentTaskNotice=null}
  const backdrop=document.createElement('div');backdrop.className='task-backdrop';backdrop.setAttribute('aria-hidden','true');
  const previousOverflow=document.body.style.overflow;document.body.style.overflow='hidden';
  const panel=document.createElement('section');panel.className='task-notice';panel.setAttribute('role','dialog');panel.setAttribute('aria-modal','true');panel.setAttribute('aria-labelledby','taskNoticeHeading');
  const heading=document.createElement('h3');heading.id='taskNoticeHeading';heading.textContent='Task in Progress';
- const message=document.createElement('p');message.textContent=task.url?'Please complete this task honestly before continuing.':'No external link is configured for this task. Follow the task instructions, then return here and confirm honestly.';
- const timer=document.createElement('div');timer.className='task-clock';
- const detail=document.createElement('p');detail.className='task-warning';detail.textContent='Only confirm if you have genuinely completed the task.';
+ const message=document.createElement('p');message.textContent=task.url?'Please complete this task honestly before continuing.':'Follow the task instructions, then return here and confirm honestly.';
+ const detail=document.createElement('p');detail.className='task-warning';detail.textContent='This notice will close automatically. Confirm the task only after you have genuinely completed it.';
  const link=document.createElement('a');link.href=task.url||'#';link.target='_blank';link.rel='noopener noreferrer';link.textContent='Open Task Link';link.style.cssText='display:inline-block;margin:4px 0 8px;color:#6ee7ff;font-size:12px;font-weight:800';link.hidden=!task.url;
- const button=document.createElement('button');button.type='button';button.textContent='I Completed the Task';button.disabled=true;button.hidden=true;
- button.onclick=()=>{
-  if(Date.now()<deadline){detail.textContent='The countdown is still running. Please complete the task genuinely and wait until the timer reaches zero.';return}
-  button.disabled=true;button.textContent='Checking task...';
-  if(saved.taskTimers){delete saved.taskTimers[task.id];persist()}
-  if(taskTimerInterval)clearInterval(taskTimerInterval);taskTimerInterval=null;
-  panel.remove();backdrop.remove();currentTaskNotice=null;document.body.style.overflow=previousOverflow;onCompletedClick();
- };
- panel.append(heading,message,link,detail,button);document.body.append(backdrop,panel);currentTaskNotice=panel;
+ panel.append(heading,message,link,detail);document.body.append(backdrop,panel);currentTaskNotice=panel;
+ if(start)start.hidden=true;
  if(taskTimerInterval)clearInterval(taskTimerInterval);
  let finished=false;
- const tick=()=>{
-  const left=Math.max(0,Math.ceil((deadline-Date.now())/1000));
-  const minutes=Math.floor(left/60);timer.textContent=String(Math.floor(minutes/60)).padStart(2,'0')+':'+String(minutes%60).padStart(2,'0')+':'+String(left%60).padStart(2,'0');
-  if(left<=0&&!finished){finished=true;clearInterval(taskTimerInterval);taskTimerInterval=null;button.hidden=false;button.disabled=false;detail.textContent='The timer has ended. Only click “I Completed the Task” after you have genuinely completed this task.'}
+ const finishNotice=()=>{
+  if(finished)return;finished=true;
+  if(taskTimerInterval)clearInterval(taskTimerInterval);taskTimerInterval=null;
+  panel.remove();backdrop.remove();currentTaskNotice=null;document.body.style.overflow=previousOverflow;
+  if(status){status.textContent='Task ready. Confirm below after completing it.';status.className='task-status'}
+  if(content&&!content.querySelector('.confirm-task')){
+   const confirm=document.createElement('button');confirm.type='button';confirm.id='confirm-'+task.id;confirm.className='start-task confirm-task';confirm.textContent='I Completed the Task';
+   confirm.onclick=()=>{confirm.disabled=true;confirm.textContent='Checking task...';if(saved.taskTimers){delete saved.taskTimers[task.id];persist()}onCompletedClick()};
+   content.append(confirm);
+  }
  };
+ const tick=()=>{if(Date.now()>=deadline)finishNotice()};
  tick();if(!finished)taskTimerInterval=setInterval(tick,250);
 }
 function restoreTaskTimer(){
@@ -349,7 +348,7 @@ async function completeTask(task,card,content,status,start){
   busy=true;start.disabled=true;status.textContent='Recording your confirmation...';
   const result=await post('/public/tasks/complete',{session_id:sessionId,task_id:task.id,confirmed:true});
   if(result.completed){completed.add(task.id);persist();render()}
- }catch(e){status.textContent=e.message;status.className='task-status error';start.disabled=false}
+ }catch(e){status.textContent=e.message;status.className='task-status error';start.disabled=false;const confirm=document.getElementById('confirm-'+task.id);if(confirm){confirm.disabled=false;confirm.textContent='I Completed the Task'}}
  finally{busy=false;renderAfterChallenge(task.id)}
 }
 function renderAfterChallenge(taskId){

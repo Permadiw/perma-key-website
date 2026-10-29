@@ -189,7 +189,7 @@ const STORAGE_KEY='perma_free_key_internal_tasks_v1';
 const KEY_LIFETIME_MS=3*60*60*1000;
 let TASKS=[];
 const TURNSTILE_SITE_KEY='0x4AAAAAAFZGQ4AtU1ySVLDH';
-let sessionId=null,completed=new Set(),busy=false,keyCountdownTimer=null,taskTimerInterval=null,currentTaskNotice=null,turnstileToken="",sessionStartPending=false,humanVerified=false,turnstileWidgetId=null,verifyBusy=false;
+let sessionId=null,completed=new Set(),busy=false,keyCountdownTimer=null,taskTimerInterval=null,currentTaskNotice=null,turnstileToken="",sessionStartPending=false,humanVerified=false,turnstileWidgetId=null,verifyBusy=false,discordVerified=false;
 let saved={};try{saved=JSON.parse(localStorage.getItem(STORAGE_KEY)||'{}')||{}}catch{}
 const list=document.getElementById('taskList'),getBtn=document.getElementById('get'),out=document.getElementById('out');
 function persist(){try{localStorage.setItem(STORAGE_KEY,JSON.stringify({...saved,sessionId,completed:[...completed]}))}catch{}}
@@ -237,6 +237,17 @@ function expireSavedKey(){
  document.body.style.overflow='';
  render();startSession();
 }
+async function refreshDiscordStatus(){
+ if(!sessionId)return false;
+ try{const d=await post('/public/discord/status',{session_id:sessionId});discordVerified=d.verified===true}catch(e){discordVerified=false}
+ return discordVerified;
+}
+async function startDiscordVerification(button,status){
+ if(!sessionId)return;
+ button.disabled=true;status.textContent='Opening secure Discord verification...';status.className='task-status';
+ try{const d=await post('/public/discord/start',{session_id:sessionId});if(!d.authorize_url)throw Error('Discord did not return an authorization URL.');window.location.assign(d.authorize_url)}
+ catch(e){status.textContent=e.message;status.className='task-status error';button.disabled=false}
+}
 function render(){
  list.replaceChildren();
  TASKS.forEach((task,i)=>{
@@ -251,10 +262,12 @@ function render(){
   if(completed.has(task.id)){status.textContent='Completed and recorded by the server.';status.className+=' good';content.append(status)}
   else{
    const locked=i>0&&!completed.has(TASKS[i-1].id);
-   const start=document.createElement('button');start.className='start-task';start.textContent=locked?'Complete previous task first':'Start task';start.disabled=locked||busy;
-   status.textContent=locked?'Complete the previous task to unlock this step.':'Start the task, wait for the timer, then confirm honestly.';
-   start.onclick=()=>beginTask(task,card,content,status,start);
-   content.append(start,status);
+   if(task.id==='discord_join'&&!discordVerified){
+    const verify=document.createElement('button');verify.type='button';verify.className='start-task';verify.textContent='VERIFY DISCORD MEMBERSHIP';verify.disabled=locked||busy;verify.onclick=()=>startDiscordVerification(verify,status);content.append(verify);
+   }
+   const start=document.createElement('button');start.className='start-task';start.textContent=task.id==='discord_join'&&!discordVerified?'Verify membership first':(locked?'Complete previous task first':'Start task');start.disabled=locked||busy||(task.id==='discord_join'&&!discordVerified);
+   status.textContent=locked?'Complete the previous task to unlock this step.':(task.id==='discord_join'&&!discordVerified?'Sign in to Discord and verify membership in the official server before starting this task.':'Start the task, wait for the timer, then confirm honestly.');
+   start.onclick=()=>beginTask(task,card,content,status,start);content.append(start,status);
   }
   card.append(num,content,check);list.append(card);
  });
@@ -268,6 +281,7 @@ function render(){
 }
 async function beginTask(task,card,content,status,start){
  if(busy)return;
+ if(task.id==='discord_join'&&!discordVerified){status.textContent='Verify Discord membership before starting this task.';status.className='task-status error';return;}
  const opened=task.url?window.open('about:blank','_blank'):null;
  try{
   const d=await post('/public/tasks/begin',{session_id:sessionId,task_id:task.id});
@@ -400,6 +414,7 @@ async function startSession(){
  try{
   const d=await post('/public/tasks/start',{session_id:saved.sessionId||sessionId||''});
   sessionId=d.session_id;
+  await refreshDiscordStatus();
   TASKS=(Array.isArray(d.tasks)?d.tasks:[]).map(t=>({
    id:String(t.id||''),title:String(t.title||t.id||'Task'),
    desc:String(t.description||''),url:String(t.url||''),duration:Math.max(0,Number(t.duration_seconds)||0)
@@ -408,6 +423,17 @@ async function startSession(){
   completed=new Set((Array.isArray(d.completed_tasks)?d.completed_tasks:[]).filter(id=>TASKS.some(t=>t.id===id)));
   humanVerified=false;
   persist();render();restoreTaskTimer();
+  const discordReturn=new URLSearchParams(window.location.search).get('discord');
+  if(discordReturn){
+   const status=document.getElementById('status-discord_join');
+   if(status){
+    if(discordReturn==='verified'&&discordVerified){status.textContent='Discord membership verified by the server. You can continue.';status.className='task-status good';}
+    else if(discordReturn==='not_member'){status.textContent='This Discord account is not a member of the official server. Join it, then verify again.';status.className='task-status error';}
+    else if(discordReturn==='expired'){status.textContent='Discord verification session expired. Please verify again.';status.className='task-status error';}
+    else {status.textContent='Discord verification could not be completed. Check the bot permissions and try again.';status.className='task-status error';}
+   }
+   window.history.replaceState({},document.title,window.location.pathname);
+  }
  }catch(e){
   list.replaceChildren();
   const msg=document.createElement('div');msg.className='notice error';msg.textContent='Unable to load Free Key tasks: '+e.message;

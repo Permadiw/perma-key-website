@@ -140,7 +140,16 @@ async function audit(db,type,detail=""){
 }
 
 async function checkDiscordMember(db,env,session){
-  if(!session||!session.discord_user_id||!session.discord_verified_at)return {ok:false,member:false};
+  if(!session)return {ok:false,member:false};
+  if(!session.discord_user_id||!session.discord_verified_at){
+    const completed=JSON.parse(session.completed_json||"[]");
+    if(completed.includes("discord_join")){
+      const starts=JSON.parse(session.task_started_json||"{}");delete starts.discord_join;
+      await db.prepare("UPDATE free_task_sessions SET completed_json=?,task_started_json=?,human_verified_at=NULL,updated_at=? WHERE session_id=?")
+        .bind(JSON.stringify(completed.filter(id=>id!=="discord_join")),JSON.stringify(starts),now(),session.session_id).run();
+    }
+    return {ok:true,member:false};
+  }
   const guildId=str(env.DISCORD_GUILD_ID,100),botToken=String(env.DISCORD_BOT_TOKEN||"");
   if(!guildId||!botToken)return {ok:false,member:false,unavailable:true};
   try{

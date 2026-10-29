@@ -425,7 +425,17 @@ async function handle(req,env){
     if(!session||now()-Number(session.created_at)>7200)return err("SESSION_EXPIRED","Start the task flow again.",410);
     const completed=JSON.parse(session.completed_json||"[]"),tasks=await activeTasks(db);
     if(!tasks.length||!tasks.every(x=>completed.includes(x.id)))return err("TASKS_INCOMPLETE","Complete all active server-checked website tasks first.",403);
-    if(!session.discord_verified_at)return err("DISCORD_MEMBERSHIP_REQUIRED","Join and verify membership in the official Discord server before requesting a key.",403);
+    if(!session.discord_verified_at||!session.discord_user_id)return err("DISCORD_MEMBERSHIP_REQUIRED","Join and verify membership in the official Discord server before requesting a key.",403);
+    const guildId=str(env.DISCORD_GUILD_ID,100),botToken=String(env.DISCORD_BOT_TOKEN||"");
+    if(!guildId||!botToken)return err("DISCORD_NOT_CONFIGURED","Discord membership verification is not configured on the API yet.",503);
+    try{
+      const memberCheck=await fetch("https://discord.com/api/guilds/"+encodeURIComponent(guildId)+"/members/"+encodeURIComponent(session.discord_user_id),{headers:{Authorization:"Bot "+botToken}});
+      if(memberCheck.status===404){
+        await db.prepare("UPDATE free_task_sessions SET discord_user_id=NULL,discord_verified_at=NULL,updated_at=? WHERE session_id=?").bind(now(),sid).run();
+        return err("DISCORD_MEMBERSHIP_REQUIRED","You are no longer a member of the official Discord server. Rejoin and verify again.",403);
+      }
+      if(!memberCheck.ok)return err("DISCORD_CHECK_FAILED","Discord membership could not be rechecked. Please try again shortly.",503);
+    }catch(e){return err("DISCORD_CHECK_FAILED","Discord membership could not be rechecked. Please try again shortly.",503)}
     if(!Number(session.human_verified_at)||now()-Number(session.human_verified_at)>600)return err("HUMAN_VERIFICATION_REQUIRED","Please verify that you are human before requesting a key.",403);
     if(session.issued_key_hash)return err("KEY_ALREADY_ISSUED","This task session has already received a key.",409);
     const issued=await create(db,"FREE","Website tasks completed",true);

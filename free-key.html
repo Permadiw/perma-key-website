@@ -239,7 +239,22 @@ function expireSavedKey(){
 }
 async function refreshDiscordStatus(){
  if(!sessionId)return false;
- try{const d=await post('/public/discord/status',{session_id:sessionId});discordVerified=d.verified===true}catch(e){discordVerified=false}
+ const hadDiscordTask=completed.has('discord_join');
+ try{
+  const d=await post('/public/discord/status',{session_id:sessionId});
+  discordVerified=d.verified===true;
+  if(TASKS.length&&Array.isArray(d.completed_tasks)){
+   completed=new Set(d.completed_tasks.filter(id=>TASKS.some(t=>t.id===id)));
+   if(hadDiscordTask&&!completed.has('discord_join')){
+    humanVerified=false;
+    turnstileToken='';
+    getBtn.disabled=true;
+    const status=document.getElementById('status-discord_join');
+    if(status){status.textContent='Membership was not found. The Join Discord task has been reset. Rejoin the server and verify again.';status.className='task-status error'}
+    persist();render();
+   }
+  }
+ }catch(e){discordVerified=false}
  return discordVerified;
 }
 async function startDiscordVerification(button,status){
@@ -422,6 +437,7 @@ async function startSession(){
   if(!TASKS.length)throw Error('No active tasks are configured. Please contact the site owner.');
   completed=new Set((Array.isArray(d.completed_tasks)?d.completed_tasks:[]).filter(id=>TASKS.some(t=>t.id===id)));
   humanVerified=false;
+  await refreshDiscordStatus();
   persist();render();restoreTaskTimer();
   const discordReturn=new URLSearchParams(window.location.search).get('discord');
   if(discordReturn){
@@ -463,4 +479,5 @@ async function checkStoredKey(){
 }
 startSession();if(saved.key)showKey(saved.key,Number(saved.keyExpiresAt)>0?Number(saved.keyExpiresAt):null);
 checkStoredKey();setInterval(checkStoredKey,30000);
+setInterval(async()=>{if(!sessionId||busy)return;const wasVerified=discordVerified;await refreshDiscordStatus();if(wasVerified&&!discordVerified&&completed.has('discord_join')){completed.delete('discord_join');persist();render();}},30000);
 </script></body></html>

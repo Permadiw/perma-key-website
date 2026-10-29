@@ -138,6 +138,27 @@ async function audit(db,type,detail=""){
   try{await db.prepare("INSERT INTO audit_events(event_type,detail,created_at) VALUES(?,?,?)")
     .bind(str(type,100),str(detail,1000),now()).run()}catch(e){console.error("Audit:",e.message)}
 }
+
+async function checkDiscordMember(db,env,session){
+  if(!session||!session.discord_user_id||!session.discord_verified_at)return {ok:false,member:false};
+  const guildId=str(env.DISCORD_GUILD_ID,100),botToken=String(env.DISCORD_BOT_TOKEN||"");
+  if(!guildId||!botToken)return {ok:false,member:false,unavailable:true};
+  try{
+    const r=await fetch("https://discord.com/api/guilds/"+encodeURIComponent(guildId)+"/members/"+encodeURIComponent(session.discord_user_id),{
+      headers:{Authorization:"Bot "+botToken}
+    });
+    if(r.status===404){
+      const completed=JSON.parse(session.completed_json||"[]").filter(id=>id!=="discord_join");
+      const starts=JSON.parse(session.task_started_json||"{}");delete starts.discord_join;
+      await db.prepare("UPDATE free_task_sessions SET discord_user_id=NULL,discord_verified_at=NULL,completed_json=?,task_started_json=?,human_verified_at=NULL,updated_at=? WHERE session_id=?")
+        .bind(JSON.stringify(completed),JSON.stringify(starts),now(),session.session_id).run();
+      return {ok:true,member:false};
+    }
+    if(!r.ok)return {ok:false,member:false,unavailable:true};
+    return {ok:true,member:true};
+  }catch(e){console.error("Discord membership recheck failed:",e?.message||e);return {ok:false,member:false,unavailable:true};}
+}
+
 async function getKey(db,key){
   key=norm(key);if(!key)return null;
   return db.prepare("SELECT * FROM keys WHERE key_hash=?").bind(await hash(key)).first();
@@ -343,9 +364,16 @@ async function handle(req,env){
   }
   if(p==="/public/discord/status"&&m==="POST"){
     const b=await body(req),sid=str(b.session_id,100);if(!sid)return err("SESSION_REQUIRED","Start the Free Key task session first.",403);
-    const session=await db.prepare("SELECT discord_verified_at,created_at FROM free_task_sessions WHERE session_id=?").bind(sid).first();
+    const session=await db.prepare("SELECT * FROM free_task_sessions WHERE session_id=?").bind(sid).first();
     if(!session||now()-Number(session.created_at)>7200)return err("SESSION_EXPIRED","Start the task flow again.",410);
-    return res({success:true,verified:!!session.discord_verified_at,verified_at:session.discord_verified_at||null});
+    let verified=!!session.discord_verified_at&&!!session.discord_user_id;
+    if(verified){
+      const check=await checkDiscordMember(db,env,session);
+      if(check.unavailable)return err("DISCORD_CHECK_FAILED","Discord membership could not be checked right now. Please try again.",503);
+      verified=check.member;
+    }
+    const refreshed=await db.prepare("SELECT completed_json FROM free_task_sessions WHERE session_id=?").bind(sid).first();
+    return res({success:true,verified,verified_at:verified?session.discord_verified_at:null,completed_tasks:JSON.parse(refreshed?.completed_json||"[]")});
   }
 
   if(p==="/public/tasks/start"&&m==="POST"){
@@ -386,7 +414,11 @@ async function handle(req,env){
     if(!session||now()-Number(session.created_at)>7200)return err("SESSION_EXPIRED","Start the task flow again.",410);
     const completed=JSON.parse(session.completed_json||"[]");
     if(index>0&&!completed.includes(tasks[index-1].id))return err("TASK_LOCKED","Complete the previous task first.",409);
-    if(taskId==="discord_join"&&!session.discord_verified_at)return err("DISCORD_MEMBERSHIP_REQUIRED","Verify membership in the official Discord server first.",403);
+    if(taskId==="discord_join"){
+      const check=await checkDiscordMember(db,env,session);
+      if(check.unavailable)return err("DISCORD_CHECK_FAILED","Discord membership could not be checked right now. Please try again.",503);
+      if(!check.member)return err("DISCORD_MEMBERSHIP_REQUIRED","Join the official Discord server and verify membership before completing this task.",403);
+    }
     if(completed.includes(taskId))return res({success:true,completed:true,task_id:taskId});
     const starts=JSON.parse(session.task_started_json||"{}");
     if(!Number(starts[taskId]))starts[taskId]=now();
@@ -410,7 +442,11 @@ async function handle(req,env){
     const index=tasks.findIndex(x=>x.id===taskId);
     if(index<0)return err("INVALID_TASK","Unknown or inactive task.",400);
     if(index>0&&!completed.includes(tasks[index-1].id))return err("TASK_LOCKED","Complete the previous task first.",409);
-    if(taskId==="discord_join"&&!session.discord_verified_at)return err("DISCORD_MEMBERSHIP_REQUIRED","Verify membership in the official Discord server first.",403);
+    if(taskId==="discord_join"){
+      const check=await checkDiscordMember(db,env,session);
+      if(check.unavailable)return err("DISCORD_CHECK_FAILED","Discord membership could not be checked right now. Please try again.",503);
+      if(!check.member)return err("DISCORD_MEMBERSHIP_REQUIRED","Join the official Discord server and verify membership before completing this task.",403);
+    }
     if(completed.includes(taskId))return res({success:true,completed:true,task_id:taskId,completed_tasks:completed,all_complete:tasks.length>0&&tasks.every(x=>completed.includes(x.id))});
     const starts=JSON.parse(session.task_started_json||"{}"),startedAt=Number(starts[taskId]||0),duration=Number(tasks[index].duration_seconds)||0;
     if(!startedAt)return err("TASK_NOT_STARTED","Start this task before confirming it.",409);
@@ -431,17 +467,9 @@ async function handle(req,env){
     if(!session||now()-Number(session.created_at)>7200)return err("SESSION_EXPIRED","Start the task flow again.",410);
     const completed=JSON.parse(session.completed_json||"[]"),tasks=await activeTasks(db);
     if(!tasks.length||!tasks.every(x=>completed.includes(x.id)))return err("TASKS_INCOMPLETE","Complete all active server-checked website tasks first.",403);
-    if(!session.discord_verified_at||!session.discord_user_id)return err("DISCORD_MEMBERSHIP_REQUIRED","Join and verify membership in the official Discord server before requesting a key.",403);
-    const guildId=str(env.DISCORD_GUILD_ID,100),botToken=String(env.DISCORD_BOT_TOKEN||"");
-    if(!guildId||!botToken)return err("DISCORD_NOT_CONFIGURED","Discord membership verification is not configured on the API yet.",503);
-    try{
-      const memberCheck=await fetch("https://discord.com/api/guilds/"+encodeURIComponent(guildId)+"/members/"+encodeURIComponent(session.discord_user_id),{headers:{Authorization:"Bot "+botToken}});
-      if(memberCheck.status===404){
-        await db.prepare("UPDATE free_task_sessions SET discord_user_id=NULL,discord_verified_at=NULL,updated_at=? WHERE session_id=?").bind(now(),sid).run();
-        return err("DISCORD_MEMBERSHIP_REQUIRED","You are no longer a member of the official Discord server. Rejoin and verify again.",403);
-      }
-      if(!memberCheck.ok)return err("DISCORD_CHECK_FAILED","Discord membership could not be rechecked. Please try again shortly.",503);
-    }catch(e){return err("DISCORD_CHECK_FAILED","Discord membership could not be rechecked. Please try again shortly.",503)}
+    const memberCheck=await checkDiscordMember(db,env,session);
+    if(memberCheck.unavailable)return err("DISCORD_CHECK_FAILED","Discord membership could not be rechecked. Please try again shortly.",503);
+    if(!memberCheck.member)return err("DISCORD_MEMBERSHIP_REQUIRED","You are no longer a member of the official Discord server. Rejoin and verify again.",403);
     if(!Number(session.human_verified_at)||now()-Number(session.human_verified_at)>600)return err("HUMAN_VERIFICATION_REQUIRED","Please verify that you are human before requesting a key.",403);
     if(session.issued_key_hash)return err("KEY_ALREADY_ISSUED","This task session has already received a key.",409);
     const issued=await create(db,"FREE","Website tasks completed",true);

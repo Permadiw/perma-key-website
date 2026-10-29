@@ -240,6 +240,7 @@ function expireSavedKey(){
 async function refreshDiscordStatus(){
  if(!sessionId)return false;
  const hadDiscordTask=completed.has('discord_join');
+ const wasVerified=discordVerified;
  try{
   const d=await post('/public/discord/status',{session_id:sessionId});
   discordVerified=d.verified===true;
@@ -254,6 +255,7 @@ async function refreshDiscordStatus(){
     persist();render();
    }
   }
+  if(wasVerified!==discordVerified){persist();render();}
  }catch(e){discordVerified=false}
  return discordVerified;
 }
@@ -429,7 +431,6 @@ async function startSession(){
  try{
   const d=await post('/public/tasks/start',{session_id:saved.sessionId||sessionId||''});
   sessionId=d.session_id;
-  await refreshDiscordStatus();
   TASKS=(Array.isArray(d.tasks)?d.tasks:[]).map(t=>({
    id:String(t.id||''),title:String(t.title||t.id||'Task'),
    desc:String(t.description||''),url:String(t.url||''),duration:Math.max(0,Number(t.duration_seconds)||0)
@@ -437,8 +438,9 @@ async function startSession(){
   if(!TASKS.length)throw Error('No active tasks are configured. Please contact the site owner.');
   completed=new Set((Array.isArray(d.completed_tasks)?d.completed_tasks:[]).filter(id=>TASKS.some(t=>t.id===id)));
   humanVerified=false;
-  await refreshDiscordStatus();
   persist();render();restoreTaskTimer();
+  // Render tasks immediately; Discord status checks must not block initial loading.
+  void refreshDiscordStatus();
   const discordReturn=new URLSearchParams(window.location.search).get('discord');
   if(discordReturn){
    const status=document.getElementById('status-discord_join');

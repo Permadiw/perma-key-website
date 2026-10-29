@@ -105,6 +105,12 @@ async function schema(db){
     WHEN 'comment_video' THEN 30 WHEN 'watch_video' THEN 40
     WHEN 'discord_join' THEN 50 ELSE sort_order END
     WHERE id IN ('subscribe_channel','like_video','comment_video','watch_video','discord_join')`).run();
+  // Keep existing D1 task rows aligned with the requested timers, not just newly inserted rows.
+  await db.prepare(`UPDATE tasks SET duration_seconds=CASE id
+    WHEN 'subscribe_channel' THEN 45 WHEN 'like_video' THEN 45
+    WHEN 'comment_video' THEN 45 WHEN 'watch_video' THEN 60
+    WHEN 'discord_join' THEN 45 ELSE duration_seconds END
+    WHERE id IN ('subscribe_channel','like_video','comment_video','watch_video','discord_join')`).run();
 }
 async function activeTasks(db){
   const result=await db.prepare("SELECT id,title,description,url,duration_seconds FROM tasks WHERE active=1 AND enabled=1 ORDER BY sort_order ASC,rowid ASC").all();

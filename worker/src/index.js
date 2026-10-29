@@ -87,6 +87,10 @@ async function schema(db){
   await ensureColumn(db,"tasks","created_at","TEXT NOT NULL DEFAULT ''");
   await ensureColumn(db,"free_task_sessions","task_started_json","TEXT NOT NULL DEFAULT '{}'");
   await ensureColumn(db,"free_task_sessions","human_verified_at","INTEGER");
+  await ensureColumn(db,"free_task_sessions","discord_user_id","TEXT");
+  await ensureColumn(db,"free_task_sessions","discord_verified_at","INTEGER");
+  await db.prepare(`CREATE TABLE IF NOT EXISTS discord_oauth_states(state_hash TEXT PRIMARY KEY,session_id TEXT NOT NULL,expires_at INTEGER NOT NULL,created_at INTEGER NOT NULL)`).run();
+  await db.prepare("DELETE FROM discord_oauth_states WHERE expires_at<?").bind(now()).run();
 
   await db.prepare("UPDATE tasks SET active=0,enabled=0 WHERE id IN ('subscribe','like','watch','comment','read_rules','install_guide','security_basics','api_basics')").run();
   for(let i=0;i<TASKS.length;i++){
@@ -295,6 +299,49 @@ async function handle(req,env){
     return err("METHOD_NOT_ALLOWED","Use POST /public/get-key with a completed session_id; GET never creates keys.",405);
   }
 
+  if(p==="/public/discord/start"&&m==="POST"){
+    const b=await body(req),sid=str(b.session_id,100);
+    if(!sid)return err("SESSION_REQUIRED","Start the Free Key task session first.",403);
+    const session=await db.prepare("SELECT * FROM free_task_sessions WHERE session_id=?").bind(sid).first();
+    if(!session||now()-Number(session.created_at)>7200)return err("SESSION_EXPIRED","Start the task flow again.",410);
+    const clientId=str(env.DISCORD_CLIENT_ID,200),redirectUri=str(env.DISCORD_REDIRECT_URI,500)||"https://perma-key-api-v2.herdiansyah0239.workers.dev/public/discord/callback";
+    if(!clientId||!env.DISCORD_CLIENT_SECRET||!env.DISCORD_BOT_TOKEN||!str(env.DISCORD_GUILD_ID,100))return err("DISCORD_NOT_CONFIGURED","Discord verification is not configured on the API yet.",503);
+    const bytes=crypto.getRandomValues(new Uint8Array(32)),state=[...bytes].map(v=>v.toString(16).padStart(2,"0")).join(""),t=now();
+    await db.prepare("INSERT INTO discord_oauth_states(state_hash,session_id,expires_at,created_at) VALUES(?,?,?,?)").bind(await hash(state),sid,t+600,t).run();
+    const auth=new URL("https://discord.com/oauth2/authorize");
+    auth.searchParams.set("client_id",clientId);auth.searchParams.set("response_type","code");auth.searchParams.set("redirect_uri",redirectUri);auth.searchParams.set("scope","identify");auth.searchParams.set("state",state);
+    return res({success:true,authorize_url:auth.toString()});
+  }
+  if(p==="/public/discord/callback"&&m==="GET"){
+    const code=str(u.searchParams.get("code"),2000),state=str(u.searchParams.get("state"),200),site="https://permafreekey.pages.dev/free-key.html";
+    const redirect=status=>new Response(null,{status:302,headers:{Location:site+"?discord="+encodeURIComponent(status),"Cache-Control":"no-store"}});
+    if(!code||!state)return redirect("error");
+    const stateHash=await hash(state),row=await db.prepare("SELECT * FROM discord_oauth_states WHERE state_hash=?").bind(stateHash).first();
+    await db.prepare("DELETE FROM discord_oauth_states WHERE state_hash=?").bind(stateHash).run();
+    if(!row||Number(row.expires_at)<now())return redirect("expired");
+    const clientId=str(env.DISCORD_CLIENT_ID,200),clientSecret=String(env.DISCORD_CLIENT_SECRET||""),botToken=String(env.DISCORD_BOT_TOKEN||""),guildId=str(env.DISCORD_GUILD_ID,100),redirectUri=str(env.DISCORD_REDIRECT_URI,500)||"https://perma-key-api-v2.herdiansyah0239.workers.dev/public/discord/callback";
+    if(!clientId||!clientSecret||!botToken||!guildId)return redirect("error");
+    try{
+      const form=new URLSearchParams({client_id:clientId,client_secret:clientSecret,grant_type:"authorization_code",code,redirect_uri:redirectUri});
+      const tr=await fetch("https://discord.com/api/oauth2/token",{method:"POST",headers:{"Content-Type":"application/x-www-form-urlencoded"},body:form});
+      if(!tr.ok)return redirect("error");const td=await tr.json();if(!td.access_token)return redirect("error");
+      const ur=await fetch("https://discord.com/api/users/@me",{headers:{Authorization:"Bearer "+td.access_token}});
+      if(!ur.ok)return redirect("error");const user=await ur.json();if(!user.id)return redirect("error");
+      const mr=await fetch("https://discord.com/api/guilds/"+encodeURIComponent(guildId)+"/members/"+encodeURIComponent(user.id),{headers:{Authorization:"Bot "+botToken}});
+      if(mr.status===404)return redirect("not_member");if(!mr.ok)return redirect("error");
+      const session=await db.prepare("SELECT * FROM free_task_sessions WHERE session_id=?").bind(row.session_id).first();
+      if(!session||now()-Number(session.created_at)>7200)return redirect("expired");
+      await db.prepare("UPDATE free_task_sessions SET discord_user_id=?,discord_verified_at=?,updated_at=? WHERE session_id=?").bind(String(user.id),now(),now(),row.session_id).run();
+      await audit(db,"DISCORD_MEMBERSHIP_VERIFIED",String(user.id));return redirect("verified");
+    }catch(e){console.error("Discord OAuth verification failed:",e?.message||e);return redirect("error")}
+  }
+  if(p==="/public/discord/status"&&m==="POST"){
+    const b=await body(req),sid=str(b.session_id,100);if(!sid)return err("SESSION_REQUIRED","Start the Free Key task session first.",403);
+    const session=await db.prepare("SELECT discord_verified_at,created_at FROM free_task_sessions WHERE session_id=?").bind(sid).first();
+    if(!session||now()-Number(session.created_at)>7200)return err("SESSION_EXPIRED","Start the task flow again.",410);
+    return res({success:true,verified:!!session.discord_verified_at,verified_at:session.discord_verified_at||null});
+  }
+
   if(p==="/public/tasks/start"&&m==="POST"){
     const b=await body(req),existingId=str(b.session_id,100),tasks=await activeTasks(db);
     if(!tasks.length)return err("NO_ACTIVE_TASKS","No active Free Key tasks are configured. Please contact the site owner.",503);
@@ -333,6 +380,7 @@ async function handle(req,env){
     if(!session||now()-Number(session.created_at)>7200)return err("SESSION_EXPIRED","Start the task flow again.",410);
     const completed=JSON.parse(session.completed_json||"[]");
     if(index>0&&!completed.includes(tasks[index-1].id))return err("TASK_LOCKED","Complete the previous task first.",409);
+    if(taskId==="discord_join"&&!session.discord_verified_at)return err("DISCORD_MEMBERSHIP_REQUIRED","Verify membership in the official Discord server first.",403);
     if(completed.includes(taskId))return res({success:true,completed:true,task_id:taskId});
     const starts=JSON.parse(session.task_started_json||"{}");
     if(!Number(starts[taskId]))starts[taskId]=now();
@@ -356,6 +404,7 @@ async function handle(req,env){
     const index=tasks.findIndex(x=>x.id===taskId);
     if(index<0)return err("INVALID_TASK","Unknown or inactive task.",400);
     if(index>0&&!completed.includes(tasks[index-1].id))return err("TASK_LOCKED","Complete the previous task first.",409);
+    if(taskId==="discord_join"&&!session.discord_verified_at)return err("DISCORD_MEMBERSHIP_REQUIRED","Verify membership in the official Discord server first.",403);
     if(completed.includes(taskId))return res({success:true,completed:true,task_id:taskId,completed_tasks:completed,all_complete:tasks.length>0&&tasks.every(x=>completed.includes(x.id))});
     const starts=JSON.parse(session.task_started_json||"{}"),startedAt=Number(starts[taskId]||0),duration=Number(tasks[index].duration_seconds)||0;
     if(!startedAt)return err("TASK_NOT_STARTED","Start this task before confirming it.",409);
@@ -376,6 +425,7 @@ async function handle(req,env){
     if(!session||now()-Number(session.created_at)>7200)return err("SESSION_EXPIRED","Start the task flow again.",410);
     const completed=JSON.parse(session.completed_json||"[]"),tasks=await activeTasks(db);
     if(!tasks.length||!tasks.every(x=>completed.includes(x.id)))return err("TASKS_INCOMPLETE","Complete all active server-checked website tasks first.",403);
+    if(!session.discord_verified_at)return err("DISCORD_MEMBERSHIP_REQUIRED","Join and verify membership in the official Discord server before requesting a key.",403);
     if(!Number(session.human_verified_at)||now()-Number(session.human_verified_at)>600)return err("HUMAN_VERIFICATION_REQUIRED","Please verify that you are human before requesting a key.",403);
     if(session.issued_key_hash)return err("KEY_ALREADY_ISSUED","This task session has already received a key.",409);
     const issued=await create(db,"FREE","Website tasks completed",true);

@@ -6,6 +6,10 @@ const H = {
   "Access-Control-Allow-Headers": "Content-Type, Authorization"
 };
 const FREE = 10800, LIMIT = 5;
+// PERMA DIW STUDIO Discord OAuth + guild IDs supplied for the FREE KEY membership check.
+// Environment bindings remain supported as overrides.
+const DISCORD_CLIENT_ID_FALLBACK = "1561765031069360198";
+const DISCORD_GUILD_ID_FALLBACK = "944196321118662697";
 const TASKS = [
   ["subscribe_channel","SUBSCRIBE TO THE PERMA DIW STUDIO YOUTUBE CHANNEL","Open the official PERMA DIW STUDIO channel, subscribe if you choose to, then return and confirm honestly. This site cannot independently verify a subscription without YouTube account authorization.","https://www.youtube.com/channel/UCiSTRqsRTp0Lem3_qxYQIwA",45],
   ["like_video","LIKE A PERMA DIW STUDIO YOUTUBE VIDEO","Open a video published by PERMA DIW STUDIO and like it if you choose to. Return and confirm honestly; a timer alone cannot prove a like.","https://www.youtube.com/channel/UCiSTRqsRTp0Lem3_qxYQIwA/videos",45],
@@ -150,7 +154,7 @@ async function checkDiscordMember(db,env,session){
     }
     return {ok:true,member:false};
   }
-  const guildId=str(env.DISCORD_GUILD_ID,100),botToken=String(env.DISCORD_BOT_TOKEN||"");
+  const guildId=str(env.DISCORD_GUILD_ID,100)||DISCORD_GUILD_ID_FALLBACK,botToken=String(env.DISCORD_BOT_TOKEN||"");
   if(!guildId||!botToken)return {ok:false,member:false,unavailable:true};
   try{
     const r=await fetch("https://discord.com/api/guilds/"+encodeURIComponent(guildId)+"/members/"+encodeURIComponent(session.discord_user_id),{
@@ -386,7 +390,7 @@ async function handle(req,env){
     if(!sid)return err("SESSION_REQUIRED","Start the Free Key task session first.",403);
     const session=await db.prepare("SELECT * FROM free_task_sessions WHERE session_id=?").bind(sid).first();
     if(!session||now()-Number(session.created_at)>7200)return err("SESSION_EXPIRED","Start the task flow again.",410);
-    const clientId=str(env.DISCORD_CLIENT_ID,200),redirectUri=str(env.DISCORD_REDIRECT_URI,500)||"https://perma-key-api-v2.herdiansyah0239.workers.dev/public/discord/callback";
+    const clientId=str(env.DISCORD_CLIENT_ID,200)||DISCORD_CLIENT_ID_FALLBACK,redirectUri=str(env.DISCORD_REDIRECT_URI,500)||"https://perma-key-api-v2.herdiansyah0239.workers.dev/public/discord/callback";
     if(!clientId||!env.DISCORD_CLIENT_SECRET||!env.DISCORD_BOT_TOKEN||!str(env.DISCORD_GUILD_ID,100))return err("DISCORD_NOT_CONFIGURED","Discord verification is not configured on the API yet.",503);
     const bytes=crypto.getRandomValues(new Uint8Array(32)),state=[...bytes].map(v=>v.toString(16).padStart(2,"0")).join(""),t=now();
     await db.prepare("INSERT INTO discord_oauth_states(state_hash,session_id,expires_at,created_at) VALUES(?,?,?,?)").bind(await hash(state),sid,t+600,t).run();
@@ -401,7 +405,7 @@ async function handle(req,env){
     const stateHash=await hash(state),row=await db.prepare("SELECT * FROM discord_oauth_states WHERE state_hash=?").bind(stateHash).first();
     await db.prepare("DELETE FROM discord_oauth_states WHERE state_hash=?").bind(stateHash).run();
     if(!row||Number(row.expires_at)<now())return redirect("expired");
-    const clientId=str(env.DISCORD_CLIENT_ID,200),clientSecret=String(env.DISCORD_CLIENT_SECRET||""),botToken=String(env.DISCORD_BOT_TOKEN||""),guildId=str(env.DISCORD_GUILD_ID,100),redirectUri=str(env.DISCORD_REDIRECT_URI,500)||"https://perma-key-api-v2.herdiansyah0239.workers.dev/public/discord/callback";
+    const clientId=str(env.DISCORD_CLIENT_ID,200)||DISCORD_CLIENT_ID_FALLBACK,clientSecret=String(env.DISCORD_CLIENT_SECRET||""),botToken=String(env.DISCORD_BOT_TOKEN||""),guildId=str(env.DISCORD_GUILD_ID,100)||DISCORD_GUILD_ID_FALLBACK,redirectUri=str(env.DISCORD_REDIRECT_URI,500)||"https://perma-key-api-v2.herdiansyah0239.workers.dev/public/discord/callback";
     if(!clientId||!clientSecret||!botToken||!guildId)return redirect("error");
     try{
       const form=new URLSearchParams({client_id:clientId,client_secret:clientSecret,grant_type:"authorization_code",code,redirect_uri:redirectUri});

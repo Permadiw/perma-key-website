@@ -308,8 +308,7 @@ async function handle(req,env){
         "modules/studio-lite-file-integration.lua",
         "modules/importer-interface-and-ui-helpers.lua",
         "modules/log-output-and-import-renderer.lua",
-        "modules/toolbox-and-application-startup.lua",
-        "modules/ai-assistant-chat-and-application-startup.lua"
+        "modules/toolbox-and-application-startup.lua"
       ];
       let assembled = "";
       let modulesOk = true;

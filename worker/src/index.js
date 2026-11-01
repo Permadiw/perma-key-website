@@ -294,27 +294,73 @@ async function handle(req,env){
     const checked = await validate(db,key);
     if(checked.valid!==true)return new Response("PERMA_KEY_ERROR: "+str(checked.message||"Key tidak valid.",180),{status:403,headers:{"Content-Type":"text/plain; charset=utf-8","Cache-Control":"no-store"}});
     let lua = "";
-    // Always prefer the latest main.lua from the private GitHub repository.
-    // PERMA_LUA_SOURCE is only a fallback for emergency operation if GitHub cannot be reached.
+    // Prefer the ordered modular source fragments. They are concatenated byte-for-byte
+    // (each fragment ends at a line boundary) so the existing Lua lexical scope and
+    // declaration order remain unchanged. main.lua remains the emergency fallback.
     if(env.GITHUB_TOKEN){
-      const gh = await fetch("https://api.github.com/repos/Permadiw/PERMA-IMPORT-RBXM-TO-STUDIO-LITE-/contents/main.lua?ref=main",{
-        headers:{
-          "Authorization":"Bearer "+env.GITHUB_TOKEN,
-          "Accept":"application/vnd.github.raw+json",
-          "X-GitHub-Api-Version":"2022-11-28",
-          "User-Agent":"PERMA-KEY-API"
+      const modulePaths = [
+        "modules/main/part-01.lua",
+        "modules/main/part-02.lua",
+        "modules/main/part-03.lua",
+        "modules/main/part-04.lua",
+        "modules/main/part-05.lua",
+        "modules/main/part-06.lua"
+      ];
+      let assembled = "";
+      let modulesOk = true;
+      for(const path of modulePaths){
+        try{
+          const gh = await fetch("https://api.github.com/repos/Permadiw/PERMA-IMPORT-RBXM-TO-STUDIO-LITE-/contents/"+path+"?ref=main",{
+            headers:{
+              "Authorization":"Bearer "+env.GITHUB_TOKEN,
+              "Accept":"application/vnd.github.raw+json",
+              "X-GitHub-Api-Version":"2022-11-28",
+              "User-Agent":"PERMA-KEY-API"
+            }
+          });
+          if(!gh.ok){ modulesOk=false; console.error("Importer module fetch failed:",path,gh.status); break; }
+          const contentType=gh.headers.get("content-type")||"";
+          let fragment="";
+          if(contentType.includes("application/json")){
+            const data=await gh.json();
+            if(data&&data.content)fragment=atob(String(data.content).replace(/\\s/g,""));
+          }else{
+            fragment=await gh.text();
+          }
+          if(!fragment){ modulesOk=false; console.error("Importer module is empty:",path); break; }
+          assembled += fragment;
+        }catch(e){
+          modulesOk=false;
+          console.error("Importer module fetch error:",path,e?.message||e);
+          break;
         }
-      });
-      if(gh.ok){
-        const contentType=gh.headers.get("content-type")||"";
-        if(contentType.includes("application/json")){
-          const data=await gh.json();
-          if(data&&data.content)lua=atob(String(data.content).replace(/\\s/g,""));
-        }else{
-          lua=await gh.text();
+      }
+      if(modulesOk && assembled.trim()) lua=assembled;
+      // Compatibility fallback for deployments/branches where the module set is incomplete.
+      if(!lua.trim()){
+        try{
+          const gh = await fetch("https://api.github.com/repos/Permadiw/PERMA-IMPORT-RBXM-TO-STUDIO-LITE-/contents/main.lua?ref=main",{
+            headers:{
+              "Authorization":"Bearer "+env.GITHUB_TOKEN,
+              "Accept":"application/vnd.github.raw+json",
+              "X-GitHub-Api-Version":"2022-11-28",
+              "User-Agent":"PERMA-KEY-API"
+            }
+          });
+          if(gh.ok){
+            const contentType=gh.headers.get("content-type")||"";
+            if(contentType.includes("application/json")){
+              const data=await gh.json();
+              if(data&&data.content)lua=atob(String(data.content).replace(/\\s/g,""));
+            }else{
+              lua=await gh.text();
+            }
+          }else{
+            console.error("Private importer fallback fetch failed:",gh.status);
+          }
+        }catch(e){
+          console.error("Private importer fallback fetch error:",e?.message||e);
         }
-      }else{
-        console.error("Private importer fetch failed:",gh.status);
       }
     }
     if(!lua.trim())lua=String(env.PERMA_LUA_SOURCE||"");

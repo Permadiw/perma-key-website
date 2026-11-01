@@ -323,7 +323,7 @@ async function handle(req,env){
           let fragment="";
           if(contentType.includes("application/json")){
             const data=await gh.json();
-            if(data&&data.content)fragment=atob(String(data.content).replace(/\\s/g,""));
+            if(data&&data.content)fragment=atob(String(data.content).replace(/\s/g,""));
           }else{
             fragment=await gh.text();
           }
@@ -351,7 +351,7 @@ async function handle(req,env){
             const contentType=gh.headers.get("content-type")||"";
             if(contentType.includes("application/json")){
               const data=await gh.json();
-              if(data&&data.content)lua=atob(String(data.content).replace(/\\s/g,""));
+              if(data&&data.content)lua=atob(String(data.content).replace(/\s/g,""));
             }else{
               lua=await gh.text();
             }

@@ -299,12 +299,12 @@ async function handle(req,env){
     // declaration order remain unchanged. main.lua remains the emergency fallback.
     if(env.GITHUB_TOKEN){
       const modulePaths = [
-        "modules/main/part-01.lua",
-        "modules/main/part-02.lua",
-        "modules/main/part-03.lua",
-        "modules/main/part-04.lua",
-        "modules/main/part-05.lua",
-        "modules/main/part-06.lua"
+        "modules/ui-configuration-and-services.lua",
+        "modules/key-system-and-verification.lua",
+        "modules/studio-lite-file-integration.lua",
+        "modules/importer-interface-and-ui-helpers.lua",
+        "modules/log-output-and-import-renderer.lua",
+        "modules/toolbox-and-application-startup.lua"
       ];
       let assembled = "";
       let modulesOk = true;

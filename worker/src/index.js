@@ -263,6 +263,27 @@ async function handle(req,env){
   const u=new URL(req.url),p=u.pathname.replace(/\/+$/,"")||"/",m=req.method.toUpperCase();
   // Keep health checks independent from D1 migrations so network/CORS and database failures can be distinguished.
   if(p==="/health"&&m==="GET")return res({success:true,service:"PERMA KEY API",deployment:"integration-fix-2026-10-18",status:"online",time:new Date().toISOString(),databaseConfigured:!!env.DB});
+  // Safe Discord integration diagnostic: never returns credentials or OAuth tokens.
+  if(p==="/public/discord/health"&&m==="GET"){
+    const clientId=str(env.DISCORD_CLIENT_ID,200)||DISCORD_CLIENT_ID_FALLBACK;
+    const clientSecret=String(env.DISCORD_CLIENT_SECRET||"");
+    const botToken=String(env.DISCORD_BOT_TOKEN||"");
+    const guildId=str(env.DISCORD_GUILD_ID,100)||DISCORD_GUILD_ID_FALLBACK;
+    const redirectUri=str(env.DISCORD_REDIRECT_URI,500)||"https://perma-key-api-v2.herdiansyah0239.workers.dev/public/discord/callback";
+    const config={client_id_present:!!clientId,client_secret_present:!!clientSecret,bot_token_present:!!botToken,guild_id_present:!!guildId,redirect_uri:redirectUri};
+    if(!clientId||!clientSecret||!botToken||!guildId)return res({success:true,configured:false,checks:config});
+    try{
+      const ar=await fetch("https://discord.com/api/oauth2/applications/@me",{headers:{Authorization:"Bot "+botToken}});
+      if(!ar.ok)return res({success:true,configured:true,bot_token_valid:false,discord_api_status:ar.status,client_id_matches:false,guild_accessible:false,checks:config});
+      const app=await ar.json();
+      const gr=await fetch("https://discord.com/api/guilds/"+encodeURIComponent(guildId),{headers:{Authorization:"Bot "+botToken}});
+      let guild=null;try{if(gr.ok)guild=await gr.json()}catch(_){}
+      return res({success:true,configured:true,bot_token_valid:true,application_id:String(app.id||""),client_id_matches:String(app.id||"")===clientId,guild_accessible:gr.ok,guild_api_status:gr.status,guild_name:guild?.name||null,guild_id:guild?String(guild.id):null,checks:config});
+    }catch(e){
+      console.error("Discord diagnostic failed:",e?.message||e);
+      return res({success:true,configured:true,bot_token_valid:false,client_id_matches:false,guild_accessible:false,checks:config});
+    }
+  }
   // Stable smoke-test response for requests that omit a key; this must work even if D1 is unavailable.
   if(p==="/execute"&&m==="GET"&&!raw({},u))return new Response("PERMA_KEY_ERROR: Masukkan key terlebih dahulu.",{status:400,headers:{"Content-Type":"text/plain; charset=utf-8","Cache-Control":"no-store","Access-Control-Allow-Origin":"*"}});
   // The loader UI is static Lua and must remain available even if D1 is temporarily unbound.

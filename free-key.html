@@ -188,7 +188,7 @@ const API='https://perma-key-api-v2.herdiansyah0239.workers.dev';
 const STORAGE_KEY='perma_free_key_internal_tasks_v1';
 const KEY_LIFETIME_MS=3*60*60*1000;
 let TASKS=[];
-const TURNSTILE_SITE_KEY='0x4AAAAAAFZGQ4AtU1ySVLDH';
+const TURNSTILE_SITE_KEY='0x4AAAAAAFxlighvLLYXv2nT';
 let sessionId=null,completed=new Set(),busy=false,keyCountdownTimer=null,taskTimerInterval=null,currentTaskNotice=null,turnstileToken="",sessionStartPending=false,humanVerified=false,turnstileWidgetId=null,verifyBusy=false,discordVerified=false;
 let saved={};try{saved=JSON.parse(localStorage.getItem(STORAGE_KEY)||'{}')||{}}catch{}
 const list=document.getElementById('taskList'),getBtn=document.getElementById('get'),out=document.getElementById('out');

@@ -9,7 +9,7 @@ const FREE = 10800, LIMIT = 5;
 // PERMA DIW STUDIO Discord OAuth + guild IDs supplied for the FREE KEY membership check.
 // Environment bindings remain supported as overrides.
 const DISCORD_CLIENT_ID_FALLBACK = "1561765031069360198";
-const DISCORD_GUILD_ID_FALLBACK = "944196321118662697";
+const DISCORD_GUILD_ID_FALLBACK = "1529367044397469817";
 const TASKS = [
   ["subscribe_channel","SUBSCRIBE TO THE PERMA DIW STUDIO YOUTUBE CHANNEL","Open the official PERMA DIW STUDIO channel, subscribe if you choose to, then return and confirm honestly. This site cannot independently verify a subscription without YouTube account authorization.","https://www.youtube.com/channel/UCiSTRqsRTp0Lem3_qxYQIwA",45],
   ["like_video","LIKE A PERMA DIW STUDIO YOUTUBE VIDEO","Open a video published by PERMA DIW STUDIO and like it if you choose to. Return and confirm honestly; a timer alone cannot prove a like.","https://www.youtube.com/channel/UCiSTRqsRTp0Lem3_qxYQIwA/videos",45],
@@ -391,7 +391,8 @@ async function handle(req,env){
     const session=await db.prepare("SELECT * FROM free_task_sessions WHERE session_id=?").bind(sid).first();
     if(!session||now()-Number(session.created_at)>7200)return err("SESSION_EXPIRED","Start the task flow again.",410);
     const clientId=str(env.DISCORD_CLIENT_ID,200)||DISCORD_CLIENT_ID_FALLBACK,redirectUri=str(env.DISCORD_REDIRECT_URI,500)||"https://perma-key-api-v2.herdiansyah0239.workers.dev/public/discord/callback";
-    if(!clientId||!env.DISCORD_CLIENT_SECRET||!env.DISCORD_BOT_TOKEN||!str(env.DISCORD_GUILD_ID,100))return err("DISCORD_NOT_CONFIGURED","Discord verification is not configured on the API yet.",503);
+    const guildId=str(env.DISCORD_GUILD_ID,100)||DISCORD_GUILD_ID_FALLBACK;
+    if(!clientId||!env.DISCORD_CLIENT_SECRET||!env.DISCORD_BOT_TOKEN||!guildId)return err("DISCORD_NOT_CONFIGURED","Discord verification is not configured on the API yet.",503);
     const bytes=crypto.getRandomValues(new Uint8Array(32)),state=[...bytes].map(v=>v.toString(16).padStart(2,"0")).join(""),t=now();
     await db.prepare("INSERT INTO discord_oauth_states(state_hash,session_id,expires_at,created_at) VALUES(?,?,?,?)").bind(await hash(state),sid,t+600,t).run();
     const auth=new URL("https://discord.com/oauth2/authorize");

@@ -8,7 +8,7 @@ const H = {
 const FREE = 10800, LIMIT = 5;
 // PERMA DIW STUDIO Discord OAuth + guild IDs supplied for the FREE KEY membership check.
 // Environment bindings remain supported as overrides.
-const DISCORD_CLIENT_ID_FALLBACK = "1561765031069360198";
+const DISCORD_CLIENT_ID_FALLBACK = "1565203642452148385";
 const DISCORD_GUILD_ID_FALLBACK = "1529367044397469817";
 const TASKS = [
   ["subscribe_channel","SUBSCRIBE TO THE PERMA DIW STUDIO YOUTUBE CHANNEL","Open the official PERMA DIW STUDIO channel, subscribe if you choose to, then return and confirm honestly. This site cannot independently verify a subscription without YouTube account authorization.","https://www.youtube.com/channel/UCiSTRqsRTp0Lem3_qxYQIwA",45],

@@ -15,7 +15,7 @@ const TASKS = [
   ["like_video","LIKE A PERMA DIW STUDIO YOUTUBE VIDEO","Open a video published by PERMA DIW STUDIO and like it if you choose to. Return and confirm honestly; a timer alone cannot prove a like.","https://www.youtube.com/channel/UCiSTRqsRTp0Lem3_qxYQIwA/videos",45],
   ["comment_video","COMMENT ON A PERMA DIW STUDIO YOUTUBE VIDEO","Open a PERMA DIW STUDIO video and leave a relevant comment if you choose to. Do not post spam. Return and confirm honestly; this site does not automatically verify comments.","https://www.youtube.com/channel/UCiSTRqsRTp0Lem3_qxYQIwA/videos",45],
   ["watch_video","WATCH A PERMA DIW STUDIO YOUTUBE VIDEO FOR AT LEAST 1 MINUTE","Open a PERMA DIW STUDIO video, watch at least one minute, then return to this page.","https://www.youtube.com/channel/UCiSTRqsRTp0Lem3_qxYQIwA/videos",60],
-  ["discord_join","JOIN THE PERMA DIW STUDIO DISCORD","Open the official Discord invite and join the server, then return here.","https://discord.gg/PvKTnGnJs",45]
+  ["discord_join","JOIN THE PERMA DIW STUDIO DISCORD","Open the official Discord invite and join the server, then return here.","https://discord.gg/7seYQHeuC",45]
 ];
 
 function res(d,s=200){return new Response(JSON.stringify(d),{status:s,headers:H})}

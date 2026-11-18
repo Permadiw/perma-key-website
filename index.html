@@ -94,6 +94,29 @@ input, select, textarea {
 @media (prefers-reduced-motion: reduce) {
   body::before, button, .btn, a.button, .action-btn, input[type="submit"], input[type="button"] { animation-duration:30s; }
 }
+
+/* PERMA KEY visual refresh — presentation only */
+:root{--bg:#070d18;--panel:#101c2e;--line:#263e5d;--blue:#287cf0;--cyan:#59def5;--text:#f4f8ff;--muted:#a9bad0}
+body{background:radial-gradient(ellipse at 50% -10%,#1a4779 0,transparent 48%),linear-gradient(150deg,#070c16,#0b1627 60%,#070d18)!important}
+.nav{padding:20px 0}.logo{box-shadow:0 8px 24px #1678ef30;border:1px solid #65baff}
+.brand{letter-spacing:1.3px}.status{border-color:#286b58;background:#10271f;box-shadow:0 0 18px #2ad89b12}
+main{padding-top:54px;padding-bottom:72px}.hero{max-width:920px;margin:auto}
+.eyebrow{border-color:#315c88;background:#10243d;color:#9cddff}
+h1{font-size:clamp(44px,8vw,82px);line-height:1.02;letter-spacing:-2.8px}
+h1 span{background:linear-gradient(100deg,#fff 5%,#80c6ff 48%,#5be3ef 90%);background-clip:text;-webkit-background-clip:text}
+.intro{max-width:650px;font-size:15px;line-height:1.85}
+.actions{gap:14px;margin:34px 0 48px}.btn{min-height:49px;border-radius:13px;padding:14px 22px}
+.btn.primary{background:linear-gradient(135deg,#287cf0,#145ac4)!important;border:1px solid #5da8ff!important;box-shadow:0 10px 26px #176fe52b!important}
+.btn.discord{background:#5865f2!important;border:1px solid #8790ff!important}
+.features{gap:16px}.feature{min-height:150px;padding:23px;border-radius:18px;background:linear-gradient(145deg,#122139,#0d1727);border-color:#2b4565;box-shadow:0 12px 30px #0002}
+.feature-icon{border-color:#315d86;background:#112a46;border-radius:12px}
+.feature h2{font-size:15px}.feature p{font-size:13px;line-height:1.8}
+.plan-grid{gap:18px}.plan-card{padding:25px;border-radius:19px;background:linear-gradient(145deg,#122139,#0b1422);border-color:#315477}
+.plan-card.premium{border-color:#9d803e;background:linear-gradient(145deg,#282316,#111827 75%)}
+.purchase,.release-section{border-radius:19px;box-shadow:0 14px 34px #0002}
+footer{padding-top:22px}
+@media(max-width:650px){main{padding:38px 0 48px}h1{font-size:clamp(42px,12vw,62px);letter-spacing:-1.6px}.intro{font-size:14px}.actions{gap:10px;margin:26px 0 36px}.btn{min-width:0;flex:1;padding:13px 12px;font-size:13px}.feature{padding:18px}.plan-grid{gap:10px}.plan-card{padding:15px 12px}}
+
 </style>
 </head>
 <body>

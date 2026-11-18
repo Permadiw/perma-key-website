@@ -15,7 +15,7 @@ const TASKS = [
   ["like_video","LIKE A PERMA DIW STUDIO YOUTUBE VIDEO","Open a video published by PERMA DIW STUDIO and like it if you choose to. Return and confirm honestly; a timer alone cannot prove a like.","https://www.youtube.com/channel/UCiSTRqsRTp0Lem3_qxYQIwA/videos",45],
   ["comment_video","COMMENT ON A PERMA DIW STUDIO YOUTUBE VIDEO","Open a PERMA DIW STUDIO video and leave a relevant comment if you choose to. Do not post spam. Return and confirm honestly; this site does not automatically verify comments.","https://www.youtube.com/channel/UCiSTRqsRTp0Lem3_qxYQIwA/videos",45],
   ["watch_video","WATCH A PERMA DIW STUDIO YOUTUBE VIDEO FOR AT LEAST 1 MINUTE","Open a PERMA DIW STUDIO video, watch at least one minute, then return to this page.","https://www.youtube.com/channel/UCiSTRqsRTp0Lem3_qxYQIwA/videos",60],
-  ["discord_join","JOIN THE PERMA DIW STUDIO DISCORD","Open the official Discord invite and join the server, then return here.","https://discord.gg/7seYQHeuC",45]
+  ["discord_join","JOIN THE PERMA DIW STUDIO DISCORD","Open the official Discord invite and join the server, then return here.","https://discord.gg/A6WBpfkWq",45]
 ];
 
 function res(d,s=200){return new Response(JSON.stringify(d),{status:s,headers:H})}
@@ -116,9 +116,15 @@ async function schema(db){
     WHEN 'discord_join' THEN 45 ELSE duration_seconds END
     WHERE id IN ('subscribe_channel','like_video','comment_video','watch_video','discord_join')`).run();
 }
+async function discordInvite(db){
+  const row=await db.prepare("SELECT setting_value FROM app_settings WHERE setting_key='discord_invite_url'").first();
+  const value=str(row?.setting_value,300);
+  return /^https:\/\/discord\.gg\/[A-Za-z0-9_-]{2,64}$/.test(value)?value:"https://discord.gg/A6WBpfkWq";
+}
 async function activeTasks(db){
   const result=await db.prepare("SELECT id,title,description,url,duration_seconds FROM tasks WHERE active=1 AND enabled=1 ORDER BY sort_order ASC,rowid ASC").all();
-  return (result.results||[]).map(t=>({...t,duration_seconds:Math.max(0,Number(t.duration_seconds)||0)}));
+  const invite=await discordInvite(db);
+  return (result.results||[]).map(t=>({...t,url:t.id==="discord_join"?invite:t.url,duration_seconds:Math.max(0,Number(t.duration_seconds)||0)}));
 }
 async function verifyTurnstile(req, token, env){
   const secret = String(env.TURNSTILE_SECRET_KEY || "");
@@ -307,6 +313,10 @@ async function handle(req,env){
 
 
   if(db) await schema(db);
+
+  if(p==="/public/discord-invite"&&m==="GET"){
+    return res({success:true,url:await discordInvite(db)});
+  }
 
   if(p==="/public/config"&&m==="GET"){
     const row=await db.prepare("SELECT setting_value FROM app_settings WHERE setting_key='loader_debug'").first();
@@ -596,9 +606,22 @@ async function handle(req,env){
     return res({success:true,code:"SUBMISSION_RECEIVED",message:"Submission received for review.",submission_id:r.meta?.last_row_id??null});
   }
 
-  const paths=["/admin/list","/admin/create","/admin/activate","/admin/revoke","/admin/delete","/admin/tasks","/admin/tasks/create","/admin/tasks/review","/admin/events","/admin/events/delete","/admin/events/clear","/admin/loader-debug"];
+  const paths=["/admin/list","/admin/create","/admin/activate","/admin/revoke","/admin/delete","/admin/tasks","/admin/tasks/create","/admin/tasks/review","/admin/events","/admin/events/delete","/admin/events/clear","/admin/loader-debug","/admin/discord-invite"];
   if(paths.includes(p)&&!env.ADMIN_TOKEN)return err("CONFIG_ERROR","ADMIN_TOKEN secret is missing on this Worker.",500);
   if(paths.includes(p)&&!admin(req,env))return err("UNAUTHORIZED","Admin authorization required.",401);
+
+  if(p==="/admin/discord-invite"&&m==="GET"){
+    return res({success:true,url:await discordInvite(db)});
+  }
+  if(p==="/admin/discord-invite"&&m==="POST"){
+    const b=await body(req),value=str(b.url,300);
+    if(!/^https:\/\/discord\.gg\/[A-Za-z0-9_-]{2,64}$/.test(value))
+      return err("INVALID_DISCORD_INVITE","Masukkan link undangan Discord yang valid dengan format https://discord.gg/kode.");
+    await db.prepare("INSERT INTO app_settings(setting_key,setting_value,updated_at) VALUES('discord_invite_url',?,?) ON CONFLICT(setting_key) DO UPDATE SET setting_value=excluded.setting_value,updated_at=excluded.updated_at")
+      .bind(value,now()).run();
+    await audit(db,"DISCORD_INVITE_UPDATED",value);
+    return res({success:true,url:value,message:"Link Discord berhasil diperbarui untuk seluruh fitur PERMA KEY."});
+  }
 
   if(p==="/admin/loader-debug"&&m==="GET"){
     const row=await db.prepare("SELECT setting_value FROM app_settings WHERE setting_key='loader_debug'").first();

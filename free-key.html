@@ -153,7 +153,65 @@ button:hover,.discord-join:hover{transform:none!important;filter:brightness(1.08
 .reward-confetti{animation-duration:1.8s!important}
 @media(prefers-reduced-motion:reduce){body:before{animation:none!important}*,*::before,*::after{scroll-behavior:auto!important;transition:none!important}}
 
-.task-clock{display:none!important}\n</style>
+.task-clock{display:none!important}\n
+/* PERMA KEY dashboard refresh — CSS only; task/API logic and element IDs remain unchanged */
+:root{--line:#294663;--text:#f4f8ff;--muted:#a9bdd5;--cyan:#62e4f5;--green:#62e8b7}
+body{padding:clamp(14px,3vw,30px)!important;place-items:start center!important;background:radial-gradient(ellipse at 15% 0,#174675 0,transparent 40%),radial-gradient(ellipse at 95% 35%,#182c59 0,transparent 34%),linear-gradient(145deg,#070c16,#0b1729 60%,#070d17)!important}
+.wrap{width:min(940px,100%)!important;margin:0 auto!important}
+.brandline{margin:2px 0 18px!important;gap:14px!important;font-size:13px!important;letter-spacing:2.2px!important}
+.brandline img{width:48px!important;height:48px!important;border-radius:15px!important;border-color:#4779a4!important}
+.card{margin-top:0!important;padding:clamp(19px,4vw,34px)!important;border:1px solid #2d4c6d!important;border-radius:22px!important;background:linear-gradient(145deg,#111f34f5,#0b1424f8 72%)!important;box-shadow:0 24px 70px #0007!important}
+.card:after{content:"";position:absolute;inset:0;pointer-events:none;border-radius:inherit;background:linear-gradient(125deg,#ffffff08,transparent 32%,transparent 75%,#48d9f508)}
+.discord-join{min-height:40px;padding:10px 15px!important;border-radius:11px!important;background:#5865f2!important;border:1px solid #858dff!important;font-size:12px!important;letter-spacing:.1px}
+.eyebrow{margin-top:8px!important;font-size:10px!important;letter-spacing:1.7px!important}
+h1{margin:13px 0 10px!important;font-size:clamp(32px,6vw,48px)!important;line-height:1.08!important;letter-spacing:-1.5px!important}
+.intro{max-width:720px;margin:10px 0 18px!important;font-size:14px!important;line-height:1.8!important}
+.notice{border:1px solid #2a496b!important;border-radius:12px!important;background:#0d1d31!important;padding:13px 15px!important;color:#c7d9ed!important;line-height:1.7!important}
+.progress-head{margin:24px 0 9px!important;font-size:11px!important;font-weight:850!important;letter-spacing:1.3px!important;color:#c8d9ee!important}
+.track{height:9px!important;border:1px solid #294663!important;background:#07111f!important}
+.fill{background:linear-gradient(90deg,#277bf0,#3bd9e9)!important}
+#taskList{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:13px;margin-top:16px}
+.task{min-width:0;min-height:142px;margin:0!important;padding:17px!important;gap:12px!important;border:1px solid #29435f!important;border-radius:16px!important;background:linear-gradient(145deg,#101e31,#0b1524)!important;box-shadow:0 9px 24px #0002!important;transition:border-color .18s,background .18s!important}
+.task.done{border-color:#287a61!important;background:linear-gradient(145deg,#0d2928,#0b1b24)!important}
+.num{width:36px!important;height:36px!important;border:1px solid #315b83!important;border-radius:11px!important;background:#102a47!important;color:#8beaff!important;font-size:12px!important}
+.task.done .num{border-color:#286c57!important;background:#10392f!important;color:#80f0c2!important}
+.task-content{padding:0 22px 0 0!important}
+.task h2{margin:1px 0 6px!important;font-size:14px!important;font-weight:800!important;line-height:1.4!important;color:#f4f8ff!important}
+.task p{margin:0 0 8px!important;font-size:12px!important;line-height:1.65!important;color:#aabdd4!important}
+.check{right:13px!important;top:13px!important;width:23px!important;height:23px!important;border-color:#3b526d!important;background:#0a1422!important}
+.task.done .check{background:#36d69a!important;border-color:#36d69a!important;color:#062116!important}
+.start-task{margin:7px 6px 0 0!important;padding:9px 12px!important;border:1px solid #376b9b!important;border-radius:9px!important;background:#112b47!important;color:#d9efff!important;font-size:11px!important;font-weight:800!important}
+.start-task:disabled{background:#101b2a!important;border-color:#273b52!important;color:#8294aa!important;opacity:.85!important}
+.task-status{margin-top:8px!important;font-size:11px!important;line-height:1.55!important;color:#9eb3cb!important}
+.task-status.good{color:#83e9bd!important}.task-status.error{color:#ffaaaa!important}
+#humanSection{margin-top:18px!important;padding:18px!important}
+#humanSection strong{font-size:12px;letter-spacing:1.1px;color:#a7e8ff}
+.mainbtn{min-height:50px!important;margin-top:20px!important;border:1px solid #4d9fff!important;border-radius:12px!important;background:linear-gradient(110deg,#176be8,#147fbf)!important;font-size:13px!important;letter-spacing:.6px!important;box-shadow:0 9px 24px #176be52b!important}
+.mainbtn:disabled{background:#1a2a3e!important;border-color:#344b66!important;color:#91a4bb!important;box-shadow:none!important;opacity:1!important}
+.out{margin-top:16px!important;padding:17px!important;border:1px solid #2b7282!important;border-radius:14px!important;background:#091925!important}
+.copy{border-radius:10px!important;background:#10372e!important}
+.countdown-wrap{border:1px solid #2b5b7c!important;border-radius:13px!important;background:#0c1e31!important}
+.foot{margin-top:19px!important;font-size:11px!important;line-height:1.7!important;color:#8ea4bf!important}
+.task-notice{border-radius:18px!important;padding:23px!important}
+.task-notice h3{font-size:19px!important}
+.reward-card{border-radius:22px!important}
+@media(max-width:650px){
+ body{padding:12px!important}
+ .brandline{margin-bottom:14px!important}
+ .brandline img{width:42px!important;height:42px!important}
+ .card{padding:18px 14px!important;border-radius:18px!important}
+ .discord-join{width:100%;margin-bottom:14px!important}
+ #taskList{grid-template-columns:1fr;gap:10px;margin-top:13px}
+ .task{min-height:0;padding:15px!important;border-radius:14px!important}
+ .task-content{padding-right:18px!important}
+ .task h2{font-size:14px!important}
+ .task p{font-size:12px!important}
+ .mainbtn{min-height:48px!important;font-size:12px!important}
+ .progress-head{margin-top:20px!important}
+}
+@media(prefers-reduced-motion:reduce){.task,.mainbtn,.discord-join{transition:none!important}}
+
+</style>
 </head>
 <body><main class="wrap">
 <div class="brand brandline"><img src="./file_00000000e7b88211b611e843b0324eaf.png" alt="PERMA Diw Studio logo"><span>PERMA DIW STUDIO<small>PERMA KEY PORTAL</small></span></div>

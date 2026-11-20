@@ -497,16 +497,19 @@ async function startSession(){
   completed=new Set((Array.isArray(d.completed_tasks)?d.completed_tasks:[]).filter(id=>TASKS.some(t=>t.id===id)));
   humanVerified=false;
   persist();render();restoreTaskTimer();
-  // Render tasks immediately; Discord status checks must not block initial loading.
-  void refreshDiscordStatus();
+  // Complete the Discord membership recheck before interpreting the OAuth return.
+  // The previous fire-and-forget call raced the callback message and showed a false error
+  // because discordVerified was still false while the API request was in flight.
   const discordReturn=new URLSearchParams(window.location.search).get('discord');
+  if(discordReturn) await refreshDiscordStatus();
+  else void refreshDiscordStatus();
   if(discordReturn){
    const status=document.getElementById('status-discord_join');
    if(status){
     if(discordReturn==='verified'&&discordVerified){status.textContent='Discord membership verified by the server. You can continue.';status.className='task-status good';}
     else if(discordReturn==='not_member'){status.textContent='This Discord account is not a member of the official server. Join it, then verify again.';status.className='task-status error';}
     else if(discordReturn==='expired'){status.textContent='Discord verification session expired. Please verify again.';status.className='task-status error';}
-    else {status.textContent='Discord verification could not be completed. Check the bot permissions and try again.';status.className='task-status error';}
+    else {status.textContent='Discord verification could not be confirmed. Please retry. If this continues, the Discord bot or OAuth configuration needs checking.';status.className='task-status error';}
    }
    window.history.replaceState({},document.title,window.location.pathname);
   }
